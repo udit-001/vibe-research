@@ -67,16 +67,35 @@ vibe-research/
 ### Research (`skills/research/`)
 Interactive research planning framework that teaches agents to clarify objectives through iterative questioning before conducting investigation.
 
+- [`skills/research/SKILL.md`](skills/research/SKILL.md) — Main skill definition
+- [`skills/research/references/session-registry.md`](skills/research/references/session-registry.md) — Multi-session management
+- [`skills/research/references/batch-processing.md`](skills/research/references/batch-processing.md) — Batch investigation workflows
+- [`skills/research/references/structured-output.md`](skills/research/references/structured-output.md) — Large-scale structured research
+- [`skills/research/tools/research_session.py`](skills/research/tools/research_session.py) — Session management CLI
+
 ### Search (`skills/search/`)
 Deep research powered by Exa. Use for lead generation, literature reviews, competitive analysis, or any query where one search falls short.
 
+- [`skills/search/SKILL.md`](skills/search/SKILL.md) — Main skill definition
+- [`skills/search/references/patterns.md`](skills/search/references/patterns.md) — Domain-specific query patterns
+- [`skills/search/references/searching.md`](skills/search/references/searching.md) — Exa search fundamentals
+- [`skills/search/references/source-quality.md`](skills/search/references/source-quality.md) — Source credibility assessment
+- [`skills/search/references/synthesis.md`](skills/search/references/synthesis.md) — Narrative synthesis guide
+
 ### Jot Collaboration (`skills/jot-collaboration/`)
 Collaborative brainstorming and planning using the Jot markdown editor with inline comments and threaded discussions.
+
+- [`skills/jot-collaboration/SKILL.md`](skills/jot-collaboration/SKILL.md) — Main skill definition
+- [`skills/jot-collaboration/references/research-planning.md`](skills/jot-collaboration/references/research-planning.md) — Research planning mode
 
 ## Tools
 
 ### Jot (`tools/jot/`)
 A minimal self-hosted collaborative markdown editor for planning and feedback workflows between humans and agents.
+
+- [`tools/jot/README.md`](tools/jot/README.md) — Full setup and usage guide
+- [`tools/jot/setup.sh`](tools/jot/setup.sh) — Linux/macOS setup script
+- [`tools/jot/setup-api-key.sh`](tools/jot/setup-api-key.sh) — API key generation
 
 **Quick start after setup:**
 ```bash
