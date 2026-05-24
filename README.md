@@ -2,6 +2,8 @@
 
 AI-assisted deep research workspace for [OpenCode](https://opencode.ai) — multi-session tracking, Exa-powered web search, collaborative planning, and structured investigation workflows.
 
+Repository: [github.com/udit-001/vibe-research](https://github.com/udit-001/vibe-research)
+
 ## Quick Start (Windows)
 
 ```batch
