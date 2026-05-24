@@ -8,7 +8,7 @@
 Research Session Manager CLI
 
 Manages research sessions with unique IDs, tracks progress, and handles
-session lifecycle: {', '.join(STATUSES)}.
+session lifecycle: planning, active, paused, completed, cancelled, failed.
 
 Uses inline UV dependency declarations (PEP 723) - run with:
     uv run research_session.py <command>
