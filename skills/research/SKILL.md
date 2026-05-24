@@ -27,6 +27,9 @@ Use this structure to guide your questioning (similar to the Expert Prompt Creat
  B) [Focused scope - specific aspect]
  C) [Alternative angle - different perspective]}
  
+**Surface Assumptions:**
+>{State your current understanding of the topic explicitly. If multiple interpretations exist, present them — don't pick silently. Flag what's uncertain or ambiguous. Let the user correct you before you invest effort in the wrong direction.}
+
 **Clarifying Questions:**
 {1. What specific decision or action will this research support?
  2. What form should the output take? (comparison table, recommendation, debugging report, etc.)

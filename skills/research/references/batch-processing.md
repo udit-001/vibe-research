@@ -226,11 +226,82 @@ The agent:
 2. Retries failed items
 3. Reports adjustment to user
 
+## Goal-Driven Research
+
+### Define Success Criteria Per Item
+
+Before researching each item, define explicit verification criteria. This prevents vague or half-baked findings.
+
+```
+Item: GitHub Copilot
+⛳ Success criteria:
+  ✓ Found pricing (free/Pro/Business/Enterprise tiers)
+  ✓ Found supported models (GPT-4o, Claude, etc.)
+  ✓ Found key differentiator vs. competitors
+  ✓ Sources: official docs + 1 independent review
+  
+Fail if: pricing is speculative, sources are all vendor marketing, or key features are missing
+```
+
+### Verify After Each Item
+
+After researching, check against criteria before marking complete:
+
+```
+❌ GitHub Copilot — missing pricing data
+→ Re-search: "GitHub Copilot pricing 2025 enterprise per-user"
+```
+
+If criteria aren't met, re-search before moving on. Don't accumulate gaps.
+
+### Integrate Into Batch Workflow
+
+The batch workflow becomes:
+
+```
+1. 🚀 Start batch — assign items
+2. 🎯 Define criteria — what "done" means per item
+3. 🔍 Research — search and extract
+4. ✅ Verify — check against criteria
+5. ⏭️  Next batch or retry failures
+```
+
+### Example (Updated)
+
+```
+🚀 Starting batch 1/4 (items 1-5)
+Researching: GitHub Copilot, Cursor, Windsurf, Codeium, Tabnine
+
+🎯 Criteria set for all 5 items...
+
+🔍 Researching...
+
+✅ Batch 1/4 complete — verified against criteria
+  ✓ GitHub Copilot (5/5 criteria met)
+  ✓ Cursor (4/4 criteria met)
+  ✓ Windsurf (4/4 criteria met)
+  ✓ Codeium (5/5 criteria met)
+  ✓ Tabnine (4/4 criteria met)
+
+All 5 passed. Starting batch 2/4...
+```
+
+If an item fails verification:
+
+```
+⚠️ Batch 2/4 — 1 item failed verification
+  ✓ Sourcegraph Cody (4/4 criteria met)
+  ✓ JetBrains AI (4/4 criteria met)
+  ❌ Amazon CodeWhisperer — pricing unclear
+    → Re-searching with refined query
+```
+
 ## Best Practices
 
 ### For Agents
 
 - **Start with small batches** — Batch size 1-2 for first few items to validate approach
+- **Define criteria before searching** — Don't start researching without knowing what "done" looks like
 - **Report every batch** — Don't go silent for 30 minutes
 - **Update progress document** — Keep Jot progress doc current
 - **Handle failures gracefully** — Retry failed items, don't stop everything
