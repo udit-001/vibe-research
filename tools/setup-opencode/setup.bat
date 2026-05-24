@@ -41,8 +41,8 @@ if !errorlevel! neq 0 (
 
 :: Pin Windows Terminal to taskbar
 echo Pinning Windows Terminal to taskbar...
-powershell -command "$app=(New-Object -ComObject Shell.Application).NameSpace('shell:AppsFolder').ParseName('Microsoft.WindowsTerminal_8wekyb3d8bbwe!App');$v=$app.Verbs()|?{$_.Name -like '*Pin*'};if($v){$v.DoIt()}" >nul 2>&1
-if !errorlevel! equ 0 ( echo   Done. ) else ( echo   Skipped (taskbar pinning not supported in this environment). )
+powershell -command "try{$p=(New-Object -ComObject Shell.Application).NameSpace('shell:AppsFolder').Items()|?{$_.Name -eq 'Windows Terminal'};$v=$p.Verbs()|?{$_.Name -like '*Pin*'};if($v){$v.DoIt()}}catch{}" >nul 2>&1
+if !errorlevel! equ 0 ( echo   Done. ) else ( echo   Skipped. )
 echo.
 
 :: Phase 1 — Git
