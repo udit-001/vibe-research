@@ -9,7 +9,7 @@ set STATE=0
 if exist "%STATE_FILE%" set /p STATE=<"%STATE_FILE%"
 
 if %STATE%==10 (
-    echo === OpenCode + Python + Jot + Skills + Zed are already installed ===
+    echo === OpenCode + Python/uv/jq + Jot + Skills + Zed are already installed ===
     echo Run: opencode --help to get started.
     echo Run: jot --help to see jot commands.
     echo Run: zed --help to see Zed commands.
@@ -328,6 +328,7 @@ echo }
 ) > "%PM2_CONFIG%"
 :pm2_config_done
 echo Jot PM2 config ready at %PM2_CONFIG%
+echo 8 > "%STATE_FILE%"
 
 :: Start Jot server
 where pm2 >nul 2>&1
@@ -423,7 +424,7 @@ echo   Key ID: %KEY_ID%
 echo.
 
 :jot_api_done
-echo 8 > "%STATE_FILE%"
+if exist "%TEMP%\jot-cookies.txt" del "%TEMP%\jot-cookies.txt"
 
 :: Phase 9 — Clone vibe-research repo and copy skills + subagent + references to OpenCode
 echo [9/10] Setting up research skills, subagent, and references...
@@ -548,8 +549,10 @@ echo Next steps:
 echo   1. Restart Windows Terminal (Git Bash)
 echo   2. Run: opencode --help
 echo   3. See %VIBE_DIR%\tools\jot\README.md for Jot usage
-echo   4. Launch Zed: zed
-echo   5. Pull updates: git -C "%VIBE_DIR%" pull
+echo   4. Run research session CLI: python "%VIBE_DIR%\skills\research\tools\research_session.py" --help
+echo   5. Manage Python packages: uv --help
+echo   6. Launch Zed: zed
+echo   7. Pull updates: git -C "%VIBE_DIR%" pull
 echo.
 echo Repository: https://github.com/udit-001/vibe-research
 echo.
