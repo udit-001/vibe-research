@@ -103,8 +103,8 @@ if !errorlevel! neq 0 (
     pause
     exit /b 0
 )
-echo Python found. Installing/upgrading uv...
-pip install uv
+echo Python found. Installing uv via winget...
+winget install -e --id astral-sh.uv
 if !errorlevel! neq 0 (
     echo WARNING: Could not install uv. Research session CLI may not work.
 )
