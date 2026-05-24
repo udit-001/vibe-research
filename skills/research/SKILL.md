@@ -203,54 +203,54 @@ Use session management when:
 
 ### How It Works
 
-The CLI tool (`skills/research/tools/research_session.py`) manages sessions in `.research/sessions.json` with no external dependencies beyond `click` and `rich`.
+The CLI tool (`skills/research/tools/research_session.py`) manages sessions in `.research/sessions.json`. Use `uv run --no-project` to invoke it (inline dependency resolution).
 
 ### Quick Commands
 
 **List all sessions:**
 ```bash
-python3 skills/research/tools/research_session.py list
-python3 skills/research/tools/research_session.py list --status active  # filter by status
+uv run --no-project skills/research/tools/research_session.py list
+uv run --no-project skills/research/tools/research_session.py list --status active  # filter by status
 ```
 
 **Create a new session:**
 ```bash
-python3 skills/research/tools/research_session.py create "Research Topic" --items 15
+uv run --no-project skills/research/tools/research_session.py create "Research Topic" --items 15
 ```
 
 **Show session details:**
 ```bash
-python3 skills/research/tools/research_session.py show R001
+uv run --no-project skills/research/tools/research_session.py show R001
 ```
 
 **Update status or progress:**
 ```bash
-python3 skills/research/tools/research_session.py status R001 active
-python3 skills/research/tools/research_session.py progress R001 --completed 5
+uv run --no-project skills/research/tools/research_session.py status R001 active
+uv run --no-project skills/research/tools/research_session.py progress R001 --completed 5
 ```
 
 **Add outline items from JSON:**
 ```bash
-python3 skills/research/tools/research_session.py add-outline R001 '[{"name": "Item 1", "category": "Cat A"}]'
+uv run --no-project skills/research/tools/research_session.py add-outline R001 '[{"name": "Item 1", "category": "Cat A"}]'
 ```
 
 **Create and link Jot documents (agent runs these automatically):**
 ```bash
-python3 skills/research/tools/research_session.py jot-create R001 "Outline"
-python3 skills/research/tools/research_session.py jot-create R001 "Fields"
+uv run --no-project skills/research/tools/research_session.py jot-create R001 "Outline"
+uv run --no-project skills/research/tools/research_session.py jot-create R001 "Fields"
 # Creates "R001 | Outline: <title>" and "R001 | Fields: <title>" in Jot,
 # stores returned doc IDs in sessions.json automatically — no manual doc linking needed
 ```
 
 **Export or delete a session:**
 ```bash
-python3 skills/research/tools/research_session.py export R001
-python3 skills/research/tools/research_session.py delete R001  # prompts for confirmation
+uv run --no-project skills/research/tools/research_session.py export R001
+uv run --no-project skills/research/tools/research_session.py delete R001  # prompts for confirmation
 ```
 
 **View statistics:**
 ```bash
-python3 skills/research/tools/research_session.py stats
+uv run --no-project skills/research/tools/research_session.py stats
 ```
 
 **Start new research (auto-assigns session ID):**
