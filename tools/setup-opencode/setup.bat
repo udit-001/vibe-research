@@ -133,20 +133,7 @@ if !errorlevel! neq 0 (
 echo 4 > "%STATE_FILE%"
 
 :: Phase 5 — OpenCode DCP plugin
-echo [5/10] Installing opencode plugin @tarquinen/opencode-dcp...
-set "GLOBAL_OC_CONFIG=%USERPROFILE%\.config\opencode\opencode.json"
-findstr "opencode-dcp" "%GLOBAL_OC_CONFIG%" >nul 2>&1
-if !errorlevel! neq 0 (
-    opencode plugin @tarquinen/opencode-dcp@latest --global
-    findstr "opencode-dcp" "%GLOBAL_OC_CONFIG%" >nul 2>&1
-    if !errorlevel! neq 0 (
-        echo FAILED.
-        pause
-        exit /b 1
-    )
-) else (
-    echo [5/10] DCP plugin already installed. Skipping.
-)
+echo [5/10] DCP plugin is configured in config/opencode.json (auto-installed on next opencode start). Skipping.
 echo 5 > "%STATE_FILE%"
 
 echo.

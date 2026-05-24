@@ -134,24 +134,7 @@ if (-not (Check-Installed opencode)) {
 Save-State 4
 
 # Phase 5 — OpenCode DCP plugin
-Write-Host "[5/10] Installing opencode plugin @tarquinen/opencode-dcp..."
-$globalConfig = "$env:USERPROFILE\.config\opencode\opencode.json"
-if (Test-Path $globalConfig) {
-    $configContent = Get-Content $globalConfig -Raw
-} else {
-    $configContent = ""
-}
-if ($configContent -notmatch 'opencode-dcp') {
-    opencode plugin @tarquinen/opencode-dcp@latest --global
-    $configContent = Get-Content $globalConfig -Raw
-    if ($configContent -notmatch 'opencode-dcp') {
-        Write-Host "FAILED."
-        Read-Host "Press Enter to exit"
-        exit 1
-    }
-} else {
-    Write-Host "[5/10] DCP plugin already installed. Skipping."
-}
+Write-Host "[5/10] DCP plugin is configured in config/opencode.json (auto-installed on next opencode start). Skipping."
 Save-State 5
 
 Write-Host ""
