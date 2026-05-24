@@ -134,10 +134,11 @@ echo 4 > "%STATE_FILE%"
 
 :: Phase 5 — OpenCode DCP plugin
 echo [5/10] Installing opencode plugin @tarquinen/opencode-dcp...
-opencode plugin list 2>nul | findstr "opencode-dcp" >nul 2>&1
+set "GLOBAL_OC_CONFIG=%USERPROFILE%\.config\opencode\opencode.json"
+findstr "opencode-dcp" "%GLOBAL_OC_CONFIG%" >nul 2>&1
 if !errorlevel! neq 0 (
     opencode plugin @tarquinen/opencode-dcp@latest --global
-    opencode plugin list 2>nul | findstr "opencode-dcp" >nul 2>&1
+    findstr "opencode-dcp" "%GLOBAL_OC_CONFIG%" >nul 2>&1
     if !errorlevel! neq 0 (
         echo FAILED.
         pause
