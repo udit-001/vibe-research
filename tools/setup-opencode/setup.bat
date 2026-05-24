@@ -202,127 +202,8 @@ if !errorlevel! neq 0 (
 )
 echo 7 > "%STATE_FILE%"
 
-:: Phase 8 — Jot Data Directory and PM2 Config
-echo [8/10] Setting up Jot data directory and PM2 config...
-set "JOT_DATA_DIR=%USERPROFILE%\jot-data"
-if not exist "%JOT_DATA_DIR%\logs" mkdir "%JOT_DATA_DIR%\logs"
-
-:: Generate PM2 ecosystem file for Jot via Python (resolves jot entry point dynamically)
-set "PM2_CONFIG=%USERPROFILE%\jot-pm2.json"
-echo Downloading PM2 config generator...
-powershell -ExecutionPolicy Bypass -Command "(New-Object Net.WebClient).DownloadFile('https://raw.githubusercontent.com/udit-001/vibe-research/master/tools/setup-opencode/gen-jot-pm2-config.py', '%TEMP%\gen-jot-pm2-config.py')"
-if not exist "%TEMP%\gen-jot-pm2-config.py" (
-    echo WARNING: Could not download PM2 config generator.
-    goto :pm2_config_done
-)
-python "%TEMP%\gen-jot-pm2-config.py" "%PM2_CONFIG%" "%JOT_DATA_DIR%" 3210
-if !errorlevel! neq 0 (
-    echo WARNING: Could not generate PM2 config.
-)
-del "%TEMP%\gen-jot-pm2-config.py" 2>nul
-:pm2_config_done
-echo Jot PM2 config ready at %PM2_CONFIG%
-echo 8 > "%STATE_FILE%"
-
-:: Start Jot server
-where pm2 >nul 2>&1
-if !errorlevel! neq 0 (
-    echo PM2 not found on PATH. Close this terminal, open a new one, and run this script again.
-    pause
-    exit /b 0
-)
-where jot >nul 2>&1
-if !errorlevel! neq 0 (
-    echo Jot CLI not found on PATH. Close this terminal, open a new one, and run this script again.
-    pause
-    exit /b 0
-)
-
-echo Starting Jot server...
-pm2 delete jot 2>nul
-pm2 start "%PM2_CONFIG%"
-if !errorlevel! neq 0 (
-    echo FAILED to start Jot server. After setup, run: pm2 start %PM2_CONFIG%
-    goto :jot_api_done
-)
-
-echo Waiting for Jot server to be ready...
-%WINDIR%\System32\timeout.exe /t 5 /nobreak >nul
-
-:: Create owner account and API key
-echo Setting up Jot authentication...
-where curl >nul 2>&1
-if !errorlevel! neq 0 (
-    echo curl not found — skipping API key generation.
-    echo After setup, run: tools\jot\setup-api-key.sh (Git Bash) or see tools\jot\README.md
-    goto :jot_api_done
-)
-where jq >nul 2>&1
-if !errorlevel! neq 0 (
-    echo jq not found on PATH. Close this terminal, open a new one, and run this script again.
-    pause
-    exit /b 0
-)
-
-set "JOT_URL=http://localhost:3210"
-set "JOT_PASSWORD=12345678"
-set "API_KEY_LABEL=opencode-skill"
-
-:: Setup owner account
-echo Creating Jot owner account...
-for /f "usebackq delims=" %%r in (`curl -s -X POST "%JOT_URL%/api/auth/setup" -H "Content-Type: application/json" -d "{\"password\":\"%JOT_PASSWORD%\",\"confirmPassword\":\"%JOT_PASSWORD%\""`) do set "SETUP_RESPONSE=%%r"
-echo %SETUP_RESPONSE% | jq -e ".token" >nul 2>&1
-if !errorlevel! neq 0 (
-    echo Owner account may already exist — trying login...
-    for /f "usebackq delims=" %%r in (`curl -s -c "%TEMP%\jot-cookies.txt" -X POST "%JOT_URL%/api/auth/login" -H "Content-Type: application/json" -d "{\"password\":\"%JOT_PASSWORD%\""`) do set "LOGIN_RESPONSE=%%r"
-    echo %LOGIN_RESPONSE% | jq -e ".ok" >nul 2>&1
-    if !errorlevel! neq 0 (
-        echo WARNING: Jot login failed. Set up manually after install.
-        goto :jot_api_done
-    )
-) else (
-    echo Owner account created. Exchanging device token...
-    for /f %%t in ('echo %SETUP_RESPONSE% ^| jq -r ".token"') do set "DEVICE_TOKEN=%%t"
-    curl -s -c "%TEMP%\jot-cookies.txt" -X POST "%JOT_URL%/api/auth/token" -H "Content-Type: application/json" -d "{\"token\":\"%DEVICE_TOKEN%\"}" >nul
-)
-
-:: Create API key
-echo Creating Jot API key...
-for /f "usebackq delims=" %%r in (`curl -s -b "%TEMP%\jot-cookies.txt" -X POST "%JOT_URL%/api/keys" -H "Content-Type: application/json" -d "{\"label\":\"%API_KEY_LABEL%\"}"`) do set "KEY_RESPONSE=%%r"
-for /f %%k in ('echo %KEY_RESPONSE% ^| jq -r ".key"') do set "API_KEY=%%k"
-for /f %%i in ('echo %KEY_RESPONSE% ^| jq -r ".id"') do set "KEY_ID=%%i"
-
-if "%API_KEY%"=="" (
-    echo WARNING: Failed to create API key. Set up manually after install.
-    goto :jot_api_done
-)
-
-echo API key created successfully.
-
-:: Register CLI
-echo Registering Jot CLI...
-jot register local "%JOT_URL%" "%API_KEY%"
-if !errorlevel! equ 0 (
-    echo Jot CLI registration successful.
-) else (
-    echo WARNING: CLI registration may have issues — API key is still valid.
-)
-
-:: Save PM2 config
-pm2 save
-
-echo.
-echo === Jot Setup Complete ===
-echo   URL: %JOT_URL%
-echo   API Key: %API_KEY%
-echo   Key ID: %KEY_ID%
-echo.
-
-:jot_api_done
-if exist "%TEMP%\jot-cookies.txt" del "%TEMP%\jot-cookies.txt"
-
-:: Phase 9 — Clone vibe-research repo and copy skills + subagent + references to OpenCode
-echo [9/10] Setting up research skills, subagent, and references...
+:: Phase 8 — Clone vibe-research repo and copy skills + subagent + references to OpenCode
+echo [8/10] Setting up research skills, subagent, and references...
 set "VIBE_DIR=%USERPROFILE%\vibe-research"
 if not exist "%VIBE_DIR%" (
     echo Cloning vibe-research repository...
@@ -341,7 +222,7 @@ set "OPENCODE_SKILLS=%USERPROFILE%\.config\opencode\skills"
 if not exist "%OPENCODE_SKILLS%" mkdir "%OPENCODE_SKILLS%"
 
 if exist "%OPENCODE_SKILLS%\research\SKILL.md" if exist "%OPENCODE_SKILLS%\search\SKILL.md" if exist "%OPENCODE_SKILLS%\jot-collaboration\SKILL.md" (
-    echo [9/10] Skills already copied. Skipping.
+    echo [8/10] Skills already copied. Skipping.
     goto :skills_done
 )
 
@@ -399,10 +280,10 @@ if exist "%OPENCODE_CONFIG%" (
 )
 
 :skills_done
-echo 9 > "%STATE_FILE%"
+echo 8 > "%STATE_FILE%"
 
-:: Phase 10 — Zed Editor
-echo [10/10] Installing Zed Editor...
+:: Phase 9 — Zed Editor
+echo [9/10] Installing Zed Editor...
 where zed >nul 2>&1
 if !errorlevel! neq 0 (
     echo Installing Zed via winget...
@@ -418,6 +299,109 @@ if !errorlevel! neq 0 (
 )
 
 :zed_done
+echo 9 > "%STATE_FILE%"
+
+:: Phase 10 — Jot Data Directory and PM2 Config
+echo [10/10] Setting up Jot server, data directory, and API key...
+set "JOT_DATA_DIR=%USERPROFILE%\jot-data"
+if not exist "%JOT_DATA_DIR%\logs" mkdir "%JOT_DATA_DIR%\logs"
+
+set "PM2_CONFIG=%USERPROFILE%\jot-pm2.json"
+echo Downloading PM2 config generator...
+powershell -ExecutionPolicy Bypass -Command "(New-Object Net.WebClient).DownloadFile('https://raw.githubusercontent.com/udit-001/vibe-research/master/tools/setup-opencode/gen-jot-pm2-config.py', '%TEMP%\gen-jot-pm2-config.py')"
+if not exist "%TEMP%\gen-jot-pm2-config.py" (
+    echo WARNING: Could not download PM2 config generator. Jot setup skipped.
+    goto :jot_done
+)
+python "%TEMP%\gen-jot-pm2-config.py" "%PM2_CONFIG%" "%JOT_DATA_DIR%" 3210
+if !errorlevel! neq 0 (
+    echo WARNING: Could not generate PM2 config. Jot setup skipped.
+    goto :jot_done
+)
+del "%TEMP%\gen-jot-pm2-config.py" 2>nul
+echo Jot PM2 config ready at %PM2_CONFIG%
+
+where pm2 >nul 2>&1
+if !errorlevel! neq 0 (
+    echo PM2 not found on PATH — Jot server auto-start skipped.
+    goto :jot_done
+)
+
+echo Starting Jot server...
+pm2 delete jot 2>nul
+pm2 start "%PM2_CONFIG%"
+if !errorlevel! neq 0 (
+    echo FAILED to start Jot server. After setup, run: pm2 start %PM2_CONFIG%
+    goto :jot_done
+)
+
+echo Waiting for Jot server to be ready...
+%WINDIR%\System32\timeout.exe /t 5 /nobreak >nul
+
+:: Create owner account and API key
+where curl >nul 2>&1
+if !errorlevel! neq 0 (
+    echo curl not found — skipping API key generation.
+    goto :jot_done
+)
+where jq >nul 2>&1
+if !errorlevel! neq 0 (
+    echo jq not found — Jot API key setup skipped (optional: restart terminal after jq install).
+    goto :jot_done
+)
+
+set "JOT_URL=http://localhost:3210"
+set "JOT_PASSWORD=12345678"
+set "API_KEY_LABEL=opencode-skill"
+
+echo Creating Jot owner account...
+for /f "usebackq delims=" %%r in (`curl -s -X POST "%JOT_URL%/api/auth/setup" -H "Content-Type: application/json" -d "{\"password\":\"%JOT_PASSWORD%\",\"confirmPassword\":\"%JOT_PASSWORD%\""`) do set "SETUP_RESPONSE=%%r"
+echo %SETUP_RESPONSE% | jq -e ".token" >nul 2>&1
+if !errorlevel! neq 0 (
+    echo Owner account may already exist — trying login...
+    for /f "usebackq delims=" %%r in (`curl -s -c "%TEMP%\jot-cookies.txt" -X POST "%JOT_URL%/api/auth/login" -H "Content-Type: application/json" -d "{\"password\":\"%JOT_PASSWORD%\""`) do set "LOGIN_RESPONSE=%%r"
+    echo %LOGIN_RESPONSE% | jq -e ".ok" >nul 2>&1
+    if !errorlevel! neq 0 (
+        echo WARNING: Jot login failed. Set up manually after install.
+        goto :jot_api_done
+    )
+) else (
+    echo Owner account created. Exchanging device token...
+    for /f %%t in ('echo %SETUP_RESPONSE% ^| jq -r ".token"') do set "DEVICE_TOKEN=%%t"
+    curl -s -c "%TEMP%\jot-cookies.txt" -X POST "%JOT_URL%/api/auth/token" -H "Content-Type: application/json" -d "{\"token\":\"%DEVICE_TOKEN%\"}" >nul
+)
+
+echo Creating Jot API key...
+for /f "usebackq delims=" %%r in (`curl -s -b "%TEMP%\jot-cookies.txt" -X POST "%JOT_URL%/api/keys" -H "Content-Type: application/json" -d "{\"label\":\"%API_KEY_LABEL%\"}"`) do set "KEY_RESPONSE=%%r"
+for /f %%k in ('echo %KEY_RESPONSE% ^| jq -r ".key"') do set "API_KEY=%%k"
+for /f %%i in ('echo %KEY_RESPONSE% ^| jq -r ".id"') do set "KEY_ID=%%i"
+
+if "%API_KEY%"=="" (
+    echo WARNING: Failed to create API key. Set up manually after install.
+    goto :jot_api_done
+)
+echo API key created successfully.
+
+echo Registering Jot CLI...
+jot register local "%JOT_URL%" "%API_KEY%"
+if !errorlevel! equ 0 (
+    echo Jot CLI registration successful.
+) else (
+    echo WARNING: CLI registration may have issues — API key is still valid.
+)
+
+pm2 save
+echo.
+echo === Jot Setup Complete ===
+echo   URL: %JOT_URL%
+echo   API Key: %API_KEY%
+echo   Key ID: %KEY_ID%
+echo.
+
+:jot_api_done
+if exist "%TEMP%\jot-cookies.txt" del "%TEMP%\jot-cookies.txt"
+
+:jot_done
 echo 10 > "%STATE_FILE%"
 
 echo.
@@ -432,8 +416,6 @@ echo   - Python 3.13 + uv + jq: Installed
 echo   - OpenCode: Installed with DCP plugin and Exa MCP
 echo   - PM2: Installed for process management
 echo   - Jot CLI: Installed (@mariozechner/jot) + auto-configured
-echo   - Jot Data: %JOT_DATA_DIR%
-echo   - Jot PM2 Config: %PM2_CONFIG%
 echo   - Skills: Copied to OpenCode skills directory
 echo   - Subagent: Copied to OpenCode agents directory
 echo   - Session Registry: Copied to research references
@@ -443,10 +425,10 @@ echo.
 echo Next steps:
 echo   1. Restart Windows Terminal (Git Bash)
 echo   2. Run: opencode --help
-echo   3. See %VIBE_DIR%\tools\jot\README.md for Jot usage
-echo   4. Run research session CLI: python "%VIBE_DIR%\skills\research\tools\research_session.py" --help
-echo   5. Manage Python packages: uv --help
-echo   6. Launch Zed: zed
+echo   3. Run research session CLI: python "%VIBE_DIR%\skills\research\tools\research_session.py" --help
+echo   4. Manage Python packages: uv --help
+echo   5. Launch Zed: zed
+echo   6. See %VIBE_DIR%\tools\jot\README.md for Jot usage
 echo   7. Pull updates: git -C "%VIBE_DIR%" pull
 echo.
 echo Repository: https://github.com/udit-001/vibe-research

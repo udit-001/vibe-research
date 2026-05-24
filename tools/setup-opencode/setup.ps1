@@ -199,99 +199,8 @@ if (-not (Check-Installed jot)) {
 }
 Save-State 7
 
-# Phase 8 — Jot Setup
-Write-Host "[8/10] Setting up Jot..."
-$JotDataDir = "$env:USERPROFILE\jot-data"
-$null = New-Item -Path "$JotDataDir\logs" -ItemType Directory -Force
-
-$Pm2Config = "$env:USERPROFILE\jot-pm2.json"
-$GenScriptUrl = "https://raw.githubusercontent.com/udit-001/vibe-research/master/tools/setup-opencode/gen-jot-pm2-config.py"
-$GenScriptPath = "$env:TEMP\gen-jot-pm2-config.py"
-
-try {
-    (New-Object Net.WebClient).DownloadFile($GenScriptUrl, $GenScriptPath)
-} catch {
-    Write-Host "WARNING: Could not download PM2 config generator."
-}
-
-if (Test-Path $GenScriptPath) {
-    python $GenScriptPath $Pm2Config $JotDataDir 3210
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "Created PM2 config at $Pm2Config"
-    } else {
-        Write-Host "WARNING: Could not generate PM2 config."
-    }
-    Remove-Item $GenScriptPath -Force -ErrorAction SilentlyContinue
-}
-
-if (-not (Check-Installed pm2)) {
-    Write-Host "PM2 not found on PATH. Open a new terminal and run this script again."
-    Read-Host "Press Enter to exit"
-    exit 0
-}
-if (-not (Check-Installed jot)) {
-    Write-Host "Jot CLI not found on PATH. Open a new terminal and run this script again."
-    Read-Host "Press Enter to exit"
-    exit 0
-}
-
-Write-Host "Starting Jot server..."
-pm2 delete jot 2>$null
-pm2 start $Pm2Config
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "FAILED to start Jot server. After setup, run: pm2 start $Pm2Config"
-} else {
-    Write-Host "Waiting for Jot server to be ready..."
-    Start-Sleep -Seconds 5
-
-    if (Check-Installed curl -and (Check-Installed jq)) {
-        $JotUrl = "http://localhost:3210"
-        $JotPassword = "12345678"
-        $ApiKeyLabel = "opencode-skill"
-
-        Write-Host "Setting up Jot authentication..."
-        $setupResp = curl -s -X POST "$JotUrl/api/auth/setup" -H "Content-Type: application/json" -d "{\"password\":\"$JotPassword\",\"confirmPassword\":\"$JotPassword\"}"
-        $setupOk = $setupResp | ConvertFrom-Json -ErrorAction SilentlyContinue
-
-        if ($setupOk -and $setupOk.token) {
-            Write-Host "Owner account created. Exchanging device token..."
-            $null = curl -s -c "$env:TEMP\jot-cookies.txt" -X POST "$JotUrl/api/auth/token" -H "Content-Type: application/json" -d "{\"token\":\"$($setupOk.token)\"}"
-        } else {
-            Write-Host "Owner account may already exist — trying login..."
-            $loginResp = curl -s -c "$env:TEMP\jot-cookies.txt" -X POST "$JotUrl/api/auth/login" -H "Content-Type: application/json" -d "{\"password\":\"$JotPassword\"}"
-            $loginOk = $loginResp | ConvertFrom-Json -ErrorAction SilentlyContinue
-            if (-not $loginOk -or -not $loginOk.ok) {
-                Write-Host "WARNING: Jot login failed. Set up manually after install."
-                $jotFailed = $true
-            }
-        }
-
-        Write-Host "Creating Jot API key..."
-        $keyResp = curl -s -b "$env:TEMP\jot-cookies.txt" -X POST "$JotUrl/api/keys" -H "Content-Type: application/json" -d "{\"label\":\"$ApiKeyLabel\"}"
-        $keyObj = $keyResp | ConvertFrom-Json -ErrorAction SilentlyContinue
-
-        if ($keyObj -and $keyObj.key) {
-            Write-Host "API key created successfully."
-            jot register local $JotUrl $keyObj.key
-            pm2 save
-            Write-Host ""
-            Write-Host "=== Jot Setup Complete ==="
-            Write-Host "  URL: $JotUrl"
-            Write-Host "  API Key: $($keyObj.key)"
-            Write-Host "  Key ID: $($keyObj.id)"
-            Write-Host ""
-        } else {
-            Write-Host "WARNING: Failed to create API key. Set up manually after install."
-        }
-    } else {
-        Write-Host "curl or jq not found — skipping Jot API key generation."
-    }
-}
-
-if (Test-Path "$env:TEMP\jot-cookies.txt") { Remove-Item "$env:TEMP\jot-cookies.txt" -Force }
-
-# Phase 9 — Clone repo and copy skills
-Write-Host "[9/10] Setting up research skills, subagent, and references..."
+# Phase 8 — Clone repo and copy skills
+Write-Host "[8/10] Setting up research skills, subagent, and references..."
 $VibeDir = "$env:USERPROFILE\vibe-research"
 if (-not (Test-Path $VibeDir)) {
     Write-Host "Cloning vibe-research repository..."
@@ -311,7 +220,7 @@ $allSkillsExist = (Test-Path "$OpencodeSkills\research\SKILL.md") -and
                   (Test-Path "$OpencodeSkills\search\SKILL.md") -and
                   (Test-Path "$OpencodeSkills\jot-collaboration\SKILL.md")
 if ($allSkillsExist) {
-    Write-Host "[9/10] Skills already copied. Skipping."
+    Write-Host "[8/10] Skills already copied. Skipping."
 } else {
     if (Test-Path "$VibeDir\skills") {
         Write-Host "Copying skills to OpenCode..."
@@ -350,10 +259,10 @@ if (Test-Path $OpencodeConfig) {
     else { Write-Host "WARNING: Could not copy opencode config." }
 }
 
-Save-State 9
+Save-State 8
 
-# Phase 10 — Zed Editor
-Write-Host "[10/10] Installing Zed Editor..."
+# Phase 9 — Zed Editor
+Write-Host "[9/10] Installing Zed Editor..."
 if (-not (Check-Installed zed)) {
     Write-Host "Installing Zed via winget..."
     winget install -e --id ZedIndustries.Zed
@@ -364,6 +273,91 @@ if (-not (Check-Installed zed)) {
 } else {
     Write-Host "Zed already installed."
 }
+
+Save-State 9
+
+# Phase 10 — Jot Setup (optional, last — skips gracefully if dependencies missing)
+Write-Host "[10/10] Setting up Jot server, data directory, and API key..."
+$JotDataDir = "$env:USERPROFILE\jot-data"
+$null = New-Item -Path "$JotDataDir\logs" -ItemType Directory -Force
+
+$Pm2Config = "$env:USERPROFILE\jot-pm2.json"
+$GenScriptUrl = "https://raw.githubusercontent.com/udit-001/vibe-research/master/tools/setup-opencode/gen-jot-pm2-config.py"
+$GenScriptPath = "$env:TEMP\gen-jot-pm2-config.py"
+
+try {
+    (New-Object Net.WebClient).DownloadFile($GenScriptUrl, $GenScriptPath)
+} catch {
+    Write-Host "WARNING: Could not download PM2 config generator."
+}
+
+if (Test-Path $GenScriptPath) {
+    python $GenScriptPath $Pm2Config $JotDataDir 3210
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "Created PM2 config at $Pm2Config"
+    } else {
+        Write-Host "WARNING: Could not generate PM2 config."
+    }
+    Remove-Item $GenScriptPath -Force -ErrorAction SilentlyContinue
+}
+
+if (-not (Check-Installed pm2)) {
+    Write-Host "PM2 not found on PATH — Jot server auto-start skipped."
+} else {
+    Write-Host "Starting Jot server..."
+    pm2 delete jot 2>$null
+    pm2 start $Pm2Config
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "FAILED to start Jot server. After setup, run: pm2 start $Pm2Config"
+    } else {
+        Write-Host "Waiting for Jot server to be ready..."
+        Start-Sleep -Seconds 5
+
+        if (Check-Installed curl -and (Check-Installed jq)) {
+            $JotUrl = "http://localhost:3210"
+            $JotPassword = "12345678"
+            $ApiKeyLabel = "opencode-skill"
+
+            Write-Host "Setting up Jot authentication..."
+            $setupResp = curl -s -X POST "$JotUrl/api/auth/setup" -H "Content-Type: application/json" -d "{\"password\":\"$JotPassword\",\"confirmPassword\":\"$JotPassword\"}"
+            $setupOk = $setupResp | ConvertFrom-Json -ErrorAction SilentlyContinue
+
+            if ($setupOk -and $setupOk.token) {
+                Write-Host "Owner account created. Exchanging device token..."
+                $null = curl -s -c "$env:TEMP\jot-cookies.txt" -X POST "$JotUrl/api/auth/token" -H "Content-Type: application/json" -d "{\"token\":\"$($setupOk.token)\"}"
+            } else {
+                Write-Host "Owner account may already exist — trying login..."
+                $loginResp = curl -s -c "$env:TEMP\jot-cookies.txt" -X POST "$JotUrl/api/auth/login" -H "Content-Type: application/json" -d "{\"password\":\"$JotPassword\"}"
+                $loginOk = $loginResp | ConvertFrom-Json -ErrorAction SilentlyContinue
+                if (-not $loginOk -or -not $loginOk.ok) {
+                    Write-Host "WARNING: Jot login failed. Set up manually after install."
+                }
+            }
+
+            Write-Host "Creating Jot API key..."
+            $keyResp = curl -s -b "$env:TEMP\jot-cookies.txt" -X POST "$JotUrl/api/keys" -H "Content-Type: application/json" -d "{\"label\":\"$ApiKeyLabel\"}"
+            $keyObj = $keyResp | ConvertFrom-Json -ErrorAction SilentlyContinue
+
+            if ($keyObj -and $keyObj.key) {
+                Write-Host "API key created successfully."
+                jot register local $JotUrl $keyObj.key
+                pm2 save
+                Write-Host ""
+                Write-Host "=== Jot Setup Complete ==="
+                Write-Host "  URL: $JotUrl"
+                Write-Host "  API Key: $($keyObj.key)"
+                Write-Host "  Key ID: $($keyObj.id)"
+                Write-Host ""
+            } else {
+                Write-Host "WARNING: Failed to create API key. Set up manually after install."
+            }
+        } else {
+            Write-Host "curl or jq not found — skipping Jot API key generation."
+        }
+    }
+}
+
+if (Test-Path "$env:TEMP\jot-cookies.txt") { Remove-Item "$env:TEMP\jot-cookies.txt" -Force }
 
 Save-State 10
 
@@ -390,10 +384,10 @@ Write-Host ""
 Write-Host "Next steps:"
 Write-Host "  1. Restart Windows Terminal (Git Bash)"
 Write-Host "  2. Run: opencode --help"
-Write-Host "  3. See $VibeDir\tools\jot\README.md for Jot usage"
-Write-Host "  4. Run research session CLI: python `"$VibeDir\skills\research\tools\research_session.py`" --help"
-Write-Host "  5. Manage Python packages: uv --help"
-Write-Host "  6. Launch Zed: zed"
+Write-Host "  3. Run research session CLI: python `"$VibeDir\skills\research\tools\research_session.py`" --help"
+Write-Host "  4. Manage Python packages: uv --help"
+Write-Host "  5. Launch Zed: zed"
+Write-Host "  6. See $VibeDir\tools\jot\README.md for Jot usage"
 Write-Host "  7. Pull updates: git -C `"$VibeDir`" pull"
 Write-Host ""
 Write-Host "Repository: https://github.com/udit-001/vibe-research"
