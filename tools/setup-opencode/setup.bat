@@ -370,7 +370,7 @@ if !errorlevel! neq 0 (
 )
 
 set "JOT_URL=http://localhost:3210"
-set "JOT_PASSWORD=your-secure-password-please-change"
+set "JOT_PASSWORD=12345678"
 set "API_KEY_LABEL=opencode-skill"
 
 :: Setup owner account
@@ -445,7 +445,7 @@ if not exist "%VIBE_DIR%" (
 set "OPENCODE_SKILLS=%USERPROFILE%\.config\opencode\skills"
 if not exist "%OPENCODE_SKILLS%" mkdir "%OPENCODE_SKILLS%"
 
-if exist "%OPENCODE_SKILLS%\research\SKILL.md" (
+if exist "%OPENCODE_SKILLS%\research\SKILL.md" if exist "%OPENCODE_SKILLS%\search\SKILL.md" if exist "%OPENCODE_SKILLS%\jot-collaboration\SKILL.md" (
     echo [9/10] Skills already copied. Skipping.
     goto :skills_done
 )
