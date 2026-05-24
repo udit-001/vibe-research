@@ -105,33 +105,16 @@ if !errorlevel! neq 0 (
     exit /b 0
 )
 where uv >nul 2>&1
-if !errorlevel! neq 0 (
-    echo Installing uv via winget...
-    winget install -e --id astral-sh.uv >nul 2>&1
-    where uv >nul 2>&1
-    if !errorlevel! neq 0 (
-        echo winget failed, trying pip...
-        pip install uv 2>nul
-        where uv >nul 2>&1
-        if !errorlevel! neq 0 (
-            echo WARNING: Could not install uv. You can install it later with: pip install uv
-        )
-    )
-) else (
-    echo uv already installed.
-)
+if !errorlevel! neq 0 winget install -e --id astral-sh.uv >nul 2>&1
+where uv >nul 2>&1
+if !errorlevel! neq 0 pip install uv >nul 2>&1
+where uv >nul 2>&1
+if !errorlevel! neq 0 echo WARNING: Could not install uv. Install later with: pip install uv
 
 where jq >nul 2>&1
-if !errorlevel! neq 0 (
-    echo Installing jq (JSON processor) via winget...
-    winget install -e --id jqlang.jq >nul 2>&1
-    where jq >nul 2>&1
-    if !errorlevel! neq 0 (
-        echo WARNING: Could not install jq. You can install it later with: winget install jqlang.jq
-    )
-) else (
-    echo jq already installed.
-)
+if !errorlevel! neq 0 winget install -e --id jqlang.jq >nul 2>&1
+where jq >nul 2>&1
+if !errorlevel! neq 0 echo WARNING: Could not install jq. Install later with: winget install jqlang.jq
 
 :: Phase 4 — OpenCode
 where opencode >nul 2>&1
