@@ -148,113 +148,17 @@ echo Created: %USERPROFILE%\Dev\playground
 echo.
 
 :: Configure Windows Terminal with Git Bash profile, theme, and settings
-set "WT_SETTINGS=%LOCALAPPDATA%\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
-if not exist "%WT_SETTINGS%" (
-    echo Windows Terminal settings.json not found at expected location.
-    echo Skipping Windows Terminal configuration.
+echo Configuring Windows Terminal...
+echo Downloading config template...
+powershell -ExecutionPolicy Bypass -Command "(New-Object Net.WebClient).DownloadFile('https://raw.githubusercontent.com/udit-001/vibe-research/master/tools/setup-opencode/wt-settings.json', '%TEMP%\wt-settings.json')"
+if not exist "%TEMP%\wt-settings.json" (
+    echo WARNING: Could not download Windows Terminal config template.
+    echo You can manually configure Windows Terminal: set Git Bash as default profile.
     goto :wt_done
 )
-
-echo Configuring Windows Terminal...
-
-:: Create a PowerShell script to modify settings.json
-set "PS_SCRIPT=%TEMP%\wt-config.ps1"
-(
-echo $settingsPath = "$env:LOCALAPPDATA\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
-echo $json = Get-Content $settingsPath -Raw ^| ConvertFrom-Json -Depth 100
-echo.
-echo # Generate a GUID for Git Bash profile
-echo $gitBashGuid = "{00000000-0000-0000-0000-000000000001}"
-echo.
-echo # Check if Git Bash profile already exists
-echo $existingProfile = $json.profiles.list ^| Where-Object { $_.name -eq "Git Bash" }
-echo if (-not $existingProfile) {
-echo     $gitBashProfile = @{
-echo         guid = $gitBashGuid
-echo         name = "Git Bash"
-echo         commandline = "`"C:\Program Files\Git\bin\bash.exe`" -li"
-echo         icon = "`"C:\Program Files\Git\mingw64\share\git\git-for-windows.ico`""
-echo         startingDirectory = "`"%USERPROFILE%\Dev\playground`""
-echo         hidden = $false
-echo     }
-echo     $json.profiles.list += $gitBashProfile
-echo     Write-Host "Added Git Bash profile"
-echo } else {
-echo     $existingProfile.startingDirectory = "`"%USERPROFILE%\Dev\playground`""
-echo     $gitBashGuid = $existingProfile.guid
-echo     Write-Host "Updated Git Bash starting directory"
-echo }
-echo.
-echo # Set Git Bash as default profile
-echo $json.defaultProfile = $gitBashGuid
-echo Write-Host "Set Git Bash as default profile"
-echo.
-echo # Add One Half Dark color scheme if not exists
-echo $oneHalfDark = @{
-echo     name = "One Half Dark"
-echo     background = "#282C34"
-echo     foreground = "#DCDFE4"
-echo     black = "#282C34"
-echo     red = "#E06C75"
-echo     green = "#98C379"
-echo     yellow = "#E5C07B"
-echo     blue = "#61AFEF"
-echo     purple = "#C678DD"
-echo     cyan = "#56B6C2"
-echo     white = "#DCDFE4"
-echo     brightBlack = "#5A6374"
-echo     brightRed = "#E06C75"
-echo     brightGreen = "#98C379"
-echo     brightYellow = "#E5C07B"
-echo     brightBlue = "#61AFEF"
-echo     brightPurple = "#C678DD"
-echo     brightCyan = "#56B6C2"
-echo     brightWhite = "#DCDFE4"
-echo     cursorColor = "#A3B3CC"
-echo     selectionBackground = "#3E4451"
-echo }
-echo.
-echo if (-not $json.schemes) {
-echo     $json ^| Add-Member -NotePropertyName schemes -NotePropertyValue @($oneHalfDark)
-echo     Write-Host "Added One Half Dark color scheme"
-echo } else {
-echo     $existingScheme = $json.schemes ^| Where-Object { $_.name -eq "One Half Dark" }
-echo     if (-not $existingScheme) {
-echo         $json.schemes += $oneHalfDark
-echo         Write-Host "Added One Half Dark color scheme"
-echo     }
-echo }
-echo.
-echo # Apply theme and font to defaults
-echo if (-not $json.profiles.defaults) {
-echo     $json.profiles ^| Add-Member -NotePropertyName defaults -NotePropertyValue @{
-echo         colorScheme = "One Half Dark"
-echo         font = @{
-echo             size = 13
-echo         }
-echo         useAcrylic = $true
-echo         acrylicOpacity = 0.85
-echo         padding = "8"
-echo     }
-echo } else {
-echo     $json.profiles.defaults.colorScheme = "One Half Dark"
-echo     $json.profiles.defaults.font = @{
-echo         size = 13
-echo     }
-echo     $json.profiles.defaults.useAcrylic = $true
-echo     $json.profiles.defaults.acrylicOpacity = 0.85
-echo     $json.profiles.defaults.padding = "8"
-echo }
-echo Write-Host "Applied theme and font settings"
-echo.
-echo # Save settings
-echo $json ^| ConvertTo-Json -Depth 100 ^| Set-Content $settingsPath
-echo Write-Host "Windows Terminal configuration saved"
-) > "%PS_SCRIPT%"
-
-powershell -ExecutionPolicy Bypass -File "%PS_SCRIPT%"
-del "%PS_SCRIPT%"
-
+powershell -ExecutionPolicy Bypass -Command "$t=Get-Content '%TEMP%\wt-settings.json' -Raw|ConvertFrom-Json -Depth 100; $t.profiles.list|Where-Object{$_.name -eq 'Git Bash'}|ForEach-Object{$_.startingDirectory='%USERPROFILE%\Dev\playground'}; $p='%LOCALAPPDATA%\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json'; if(Test-Path $p){$e=Get-Content $p -Raw|ConvertFrom-Json -Depth 100; $a=$e.profiles.list|Where-Object{$_.name -ne 'Git Bash'}; if($a){$t.profiles.list+=$a}; if($e.actions){$t.actions=$e.actions}}; $t|ConvertTo-Json -Depth 100|Set-Content $p; Write-Host 'Done'"
+del "%TEMP%\wt-settings.json"
+echo Windows Terminal configured: Git Bash as default profile
 :wt_done
 
 :: Phase 6 — PM2 (for Jot process management)

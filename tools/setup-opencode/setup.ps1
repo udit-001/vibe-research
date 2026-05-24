@@ -148,89 +148,35 @@ Write-Host "Created: $env:USERPROFILE\Dev\playground"
 Write-Host ""
 
 # Windows Terminal configuration
+Write-Host "Configuring Windows Terminal..."
 $WtSettings = "$env:LOCALAPPDATA\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
-if (-not (Test-Path $WtSettings)) {
-    Write-Host "Windows Terminal settings.json not found. Skipping configuration."
-} else {
-    Write-Host "Configuring Windows Terminal..."
-    $wtJson = Get-Content $WtSettings -Raw | ConvertFrom-Json -Depth 100
-    $gitBashGuid = "{00000000-0000-0000-0000-000000000001}"
+$TemplateUrl = "https://raw.githubusercontent.com/udit-001/vibe-research/master/tools/setup-opencode/wt-settings.json"
 
-    $existingProfile = $wtJson.profiles.list | Where-Object { $_.name -eq "Git Bash" }
-    if (-not $existingProfile) {
-        $gitBashProfile = [PSCustomObject]@{
-            guid              = $gitBashGuid
-            name              = "Git Bash"
-            commandline       = '"C:\Program Files\Git\bin\bash.exe" -li'
-            icon              = '"C:\Program Files\Git\mingw64\share\git\git-for-windows.ico"'
-            startingDirectory = $env:USERPROFILE + "\Dev\playground"
-            hidden            = $false
+try {
+    $json = (New-Object Net.WebClient).DownloadString($TemplateUrl)
+    $template = $json | ConvertFrom-Json -Depth 100
+
+    $profile = $template.profiles.list | Where-Object { $_.name -eq "Git Bash" }
+    if ($profile) {
+        $profile.startingDirectory = "$env:USERPROFILE\Dev\playground"
+    }
+
+    if (Test-Path $WtSettings) {
+        $existing = Get-Content $WtSettings -Raw | ConvertFrom-Json -Depth 100
+        $autoProfiles = $existing.profiles.list | Where-Object { $_.name -ne "Git Bash" }
+        if ($autoProfiles) {
+            $template.profiles.list += $autoProfiles
         }
-        $wtJson.profiles.list += $gitBashProfile
-        Write-Host "Added Git Bash profile"
-    } else {
-        $existingProfile.startingDirectory = "$env:USERPROFILE\Dev\playground"
-        $gitBashGuid = $existingProfile.guid
-        Write-Host "Updated Git Bash starting directory"
-    }
-
-    $wtJson.defaultProfile = $gitBashGuid
-    Write-Host "Set Git Bash as default profile"
-
-    $oneHalfDark = [PSCustomObject]@{
-        name                = "One Half Dark"
-        background          = "#282C34"
-        foreground          = "#DCDFE4"
-        black               = "#282C34"
-        red                 = "#E06C75"
-        green               = "#98C379"
-        yellow              = "#E5C07B"
-        blue                = "#61AFEF"
-        purple              = "#C678DD"
-        cyan                = "#56B6C2"
-        white               = "#DCDFE4"
-        brightBlack         = "#5A6374"
-        brightRed           = "#E06C75"
-        brightGreen         = "#98C379"
-        brightYellow        = "#E5C07B"
-        brightBlue          = "#61AFEF"
-        brightPurple        = "#C678DD"
-        brightCyan          = "#56B6C2"
-        brightWhite         = "#DCDFE4"
-        cursorColor         = "#A3B3CC"
-        selectionBackground = "#3E4451"
-    }
-
-    if (-not $wtJson.schemes) {
-        $wtJson | Add-Member -NotePropertyName schemes -NotePropertyValue @($oneHalfDark)
-        Write-Host "Added One Half Dark color scheme"
-    } else {
-        $existingScheme = $wtJson.schemes | Where-Object { $_.name -eq "One Half Dark" }
-        if (-not $existingScheme) {
-            $wtJson.schemes += $oneHalfDark
-            Write-Host "Added One Half Dark color scheme"
+        if ($existing.actions) {
+            $template.actions = $existing.actions
         }
     }
 
-    if (-not $wtJson.profiles.defaults) {
-        $wtJson.profiles | Add-Member -NotePropertyName defaults -NotePropertyValue @{
-            colorScheme   = "One Half Dark"
-            font          = @{ size = 13 }
-            useAcrylic    = $true
-            acrylicOpacity = 0.85
-            padding       = "8"
-        }
-    } else {
-        $wtJson.profiles.defaults.colorScheme = "One Half Dark"
-        $wtJson.profiles.defaults.font = @{ size = 13 }
-        $wtJson.profiles.defaults.useAcrylic = $true
-        $wtJson.profiles.defaults.acrylicOpacity = 0.85
-        $wtJson.profiles.defaults.padding = "8"
-    }
-    Write-Host "Applied theme and font settings"
-
-    $wtJson | ConvertTo-Json -Depth 100 | Set-Content $WtSettings
-    Write-Host "Windows Terminal configuration saved"
+    $template | ConvertTo-Json -Depth 100 | Set-Content $WtSettings
+    Write-Host "Windows Terminal configured: Git Bash as default profile"
+} catch {
+    Write-Host "WARNING: Could not download Windows Terminal config template."
+    Write-Host "You can manually configure Windows Terminal: set Git Bash as default profile."
 }
 
 # Phase 6 — PM2
