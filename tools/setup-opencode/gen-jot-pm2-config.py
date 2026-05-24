@@ -1,8 +1,13 @@
 import json, sys, os, subprocess
 
-def find_jot_entry():
-    candidates = []
+def find_jot_server():
+    """Find the server entry point, preferring dist/server.js over cli/jot.mjs.
 
+    cli/jot.mjs has a Windows bug: new URL(import.meta.url).pathname
+    prepends a '/' to the drive letter, creating invalid paths like
+    '/C:/Users/...'. dist/server.js handles CLI args directly and works
+    on all platforms.
+    """
     try:
         npm_root = subprocess.check_output(["npm", "root", "-g"], text=True).strip()
     except Exception:
@@ -10,33 +15,25 @@ def find_jot_entry():
 
     pkg_dir = os.path.join(npm_root, "@mariozechner", "jot")
 
-    pkg_json_path = os.path.join(pkg_dir, "package.json")
-    if os.path.exists(pkg_json_path):
-        with open(pkg_json_path) as f:
-            pkg = json.load(f)
-        bin_field = pkg.get("bin")
-        if isinstance(bin_field, dict):
-            for entry in bin_field.values():
-                if entry:
-                    candidates.append(os.path.join(pkg_dir, entry))
-        elif isinstance(bin_field, str):
-            candidates.append(os.path.join(pkg_dir, bin_field))
-        main = pkg.get("main", "")
-        if main:
-            candidates.append(os.path.join(pkg_dir, main))
+    server = os.path.join(pkg_dir, "dist", "server.js")
+    if os.path.exists(server):
+        return server, False
 
-    candidates.append(os.path.join(pkg_dir, "cli", "jot.mjs"))
-    candidates.append(os.path.join(pkg_dir, "dist", "server.js"))
+    cli = os.path.join(pkg_dir, "cli", "jot.mjs")
+    if os.path.exists(cli):
+        return cli, True
 
-    alt_dir = os.path.join(os.environ.get("LOCALAPPDATA", ""), "npm", "node_modules",
-                           "@mariozechner", "jot")
-    candidates.append(os.path.join(alt_dir, "cli", "jot.mjs"))
-    candidates.append(os.path.join(alt_dir, "dist", "server.js"))
+    alt_server = os.path.join(os.environ.get("LOCALAPPDATA", ""), "npm", "node_modules",
+                              "@mariozechner", "jot", "dist", "server.js")
+    if os.path.exists(alt_server):
+        return alt_server, False
 
-    for c in candidates:
-        if c and os.path.exists(c):
-            return c
-    return None
+    alt_cli = os.path.join(os.environ.get("LOCALAPPDATA", ""), "npm", "node_modules",
+                           "@mariozechner", "jot", "cli", "jot.mjs")
+    if os.path.exists(alt_cli):
+        return alt_cli, True
+
+    return None, False
 
 def main():
     if len(sys.argv) < 2:
@@ -47,22 +44,29 @@ def main():
     data_dir = sys.argv[2] if len(sys.argv) > 2 else os.path.join(os.path.expanduser("~"), "jot-data")
     port = sys.argv[3] if len(sys.argv) > 3 else "3210"
 
-    entry = find_jot_entry()
+    entry, is_cli = find_jot_server()
     if not entry:
         print("ERROR: Could not find Jot entry point", file=sys.stderr)
         sys.exit(1)
+
+    log_dir = os.path.join(data_dir, "logs")
+    os.makedirs(log_dir, exist_ok=True)
+
+    args = [f"--port={port}", f"--data={data_dir}"]
+    if is_cli:
+        args.insert(0, "serve")
 
     config = {
         "apps": [{
             "name": "jot",
             "script": entry.replace("\\", "/"),
-            "args": ["serve", f"--port={port}", f"--data={data_dir}"],
+            "args": args,
             "instances": 1,
             "exec_mode": "fork",
             "env": {"NODE_ENV": "production"},
-            "log_file": os.path.join(data_dir, "logs", "combined.log").replace("\\", "/"),
-            "out_file": os.path.join(data_dir, "logs", "out.log").replace("\\", "/"),
-            "error_file": os.path.join(data_dir, "logs", "error.log").replace("\\", "/"),
+            "log_file": os.path.join(log_dir, "combined.log").replace("\\", "/"),
+            "out_file": os.path.join(log_dir, "out.log").replace("\\", "/"),
+            "error_file": os.path.join(log_dir, "error.log").replace("\\", "/"),
             "autorestart": True,
             "max_restarts": 10,
             "min_uptime": "10s"
