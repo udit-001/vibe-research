@@ -4,16 +4,20 @@ AI-assisted deep research workspace for [OpenCode](https://opencode.ai) — mult
 
 ## Quick Start (Windows)
 
-Open **Command Prompt** (press `Win+R`, type `cmd`, press Enter) and run:
+Open **PowerShell** (press `Win+R`, type `powershell`, press Enter) and run:
+
+```powershell
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/udit-001/vibe-research/master/tools/setup-opencode/setup.ps1" -OutFile "$env:TEMP\setup.ps1"; & "$env:TEMP\setup.ps1"
+```
+
+Or use **Command Prompt** (press `Win+R`, type `cmd`, press Enter):
 
 ```batch
 curl -fsSL https://raw.githubusercontent.com/udit-001/vibe-research/master/tools/setup-opencode/setup.bat -o %TEMP%\setup.bat && %TEMP%\setup.bat
 ```
 
-Or use **PowerShell** (press `Win+R`, type `powershell`, press Enter) and run:
-
 ```powershell
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/udit-001/vibe-research/master/tools/setup-opencode/setup.bat" -OutFile "$env:TEMP\setup.bat"; & "$env:TEMP\setup.bat"
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/udit-001/vibe-research/master/tools/setup-opencode/setup.ps1" -OutFile "$env:TEMP\setup.ps1"; & "$env:TEMP\setup.ps1"
 ```
 
 Script installs: Windows Terminal, Git Bash, Node.js, OpenCode + DCP plugin, Exa MCP, PM2 + Jot CLI, skills, themes. Resumes after restart — re-run the same command.
