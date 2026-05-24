@@ -17,7 +17,7 @@ if %STATE%==10 (
     exit /b 0
 )
 
-echo === OpenCode + Python + Jot + Skills + Zed Windows Setup ===
+echo === OpenCode + Python/uv/jq + Jot + Skills + Zed Windows Setup ===
 echo.
 echo Repository: https://github.com/udit-001/vibe-research
 echo.
@@ -328,6 +328,101 @@ echo }
 ) > "%PM2_CONFIG%"
 :pm2_config_done
 echo Jot PM2 config ready at %PM2_CONFIG%
+
+:: Start Jot server
+where pm2 >nul 2>&1
+if !errorlevel! neq 0 (
+    echo PM2 not found on PATH. Close this terminal, open a new one, and run this script again.
+    pause
+    exit /b 0
+)
+where jot >nul 2>&1
+if !errorlevel! neq 0 (
+    echo Jot CLI not found on PATH. Close this terminal, open a new one, and run this script again.
+    pause
+    exit /b 0
+)
+
+echo Starting Jot server...
+pm2 start "%PM2_CONFIG%" 2>nul || pm2 restart jot
+if !errorlevel! neq 0 (
+    echo FAILED to start Jot server. After setup, run: pm2 start %PM2_CONFIG%
+    goto :jot_api_done
+)
+
+echo Waiting for Jot server to be ready...
+%WINDIR%\System32\timeout.exe /t 5 /nobreak >nul
+
+:: Create owner account and API key
+echo Setting up Jot authentication...
+where curl >nul 2>&1
+if !errorlevel! neq 0 (
+    echo curl not found — skipping API key generation.
+    echo After setup, run: tools\jot\setup-api-key.sh (Git Bash) or see tools\jot\README.md
+    goto :jot_api_done
+)
+where jq >nul 2>&1
+if !errorlevel! neq 0 (
+    echo jq not found on PATH. Close this terminal, open a new one, and run this script again.
+    pause
+    exit /b 0
+)
+
+set "JOT_URL=http://localhost:3210"
+set "JOT_PASSWORD=your-secure-password-please-change"
+set "API_KEY_LABEL=opencode-skill"
+
+:: Setup owner account
+echo Creating Jot owner account...
+for /f "usebackq delims=" %%r in (`curl -s -X POST "%JOT_URL%/api/auth/setup" -H "Content-Type: application/json" -d "{\"password\":\"%JOT_PASSWORD%\",\"confirmPassword\":\"%JOT_PASSWORD%\""`) do set "SETUP_RESPONSE=%%r"
+echo %SETUP_RESPONSE% | jq -e ".token" >nul 2>&1
+if !errorlevel! neq 0 (
+    echo Owner account may already exist — trying login...
+    for /f "usebackq delims=" %%r in (`curl -s -c "%TEMP%\jot-cookies.txt" -X POST "%JOT_URL%/api/auth/login" -H "Content-Type: application/json" -d "{\"password\":\"%JOT_PASSWORD%\""`) do set "LOGIN_RESPONSE=%%r"
+    echo %LOGIN_RESPONSE% | jq -e ".ok" >nul 2>&1
+    if !errorlevel! neq 0 (
+        echo WARNING: Jot login failed. Set up manually after install.
+        goto :jot_api_done
+    )
+) else (
+    echo Owner account created. Exchanging device token...
+    for /f %%t in ('echo %SETUP_RESPONSE% ^| jq -r ".token"') do set "DEVICE_TOKEN=%%t"
+    curl -s -c "%TEMP%\jot-cookies.txt" -X POST "%JOT_URL%/api/auth/token" -H "Content-Type: application/json" -d "{\"token\":\"%DEVICE_TOKEN%\"}" >nul
+)
+
+:: Create API key
+echo Creating Jot API key...
+for /f "usebackq delims=" %%r in (`curl -s -b "%TEMP%\jot-cookies.txt" -X POST "%JOT_URL%/api/keys" -H "Content-Type: application/json" -d "{\"label\":\"%API_KEY_LABEL%\"}"`) do set "KEY_RESPONSE=%%r"
+for /f %%k in ('echo %KEY_RESPONSE% ^| jq -r ".key"') do set "API_KEY=%%k"
+for /f %%i in ('echo %KEY_RESPONSE% ^| jq -r ".id"') do set "KEY_ID=%%i"
+
+if "%API_KEY%"=="" (
+    echo WARNING: Failed to create API key. Set up manually after install.
+    goto :jot_api_done
+)
+
+echo API key created successfully.
+
+:: Register CLI
+echo Registering Jot CLI...
+jot register local "%JOT_URL%" "%API_KEY%"
+if !errorlevel! equ 0 (
+    echo Jot CLI registration successful.
+) else (
+    echo WARNING: CLI registration may have issues — API key is still valid.
+)
+
+:: Save PM2 config
+pm2 save
+
+echo.
+echo === Jot Setup Complete ===
+echo   URL: %JOT_URL%
+echo   API Key: %API_KEY%
+echo   Key ID: %KEY_ID%
+echo.
+
+:jot_api_done
 echo 8 > "%STATE_FILE%"
 
 :: Phase 9 — Clone vibe-research repo and copy skills + subagent + references to OpenCode
@@ -335,7 +430,7 @@ echo [9/10] Setting up research skills, subagent, and references...
 set "VIBE_DIR=%USERPROFILE%\vibe-research"
 if not exist "%VIBE_DIR%" (
     echo Cloning vibe-research repository...
-    git clone https://github.com/YOUR_USERNAME/vibe-research.git "%VIBE_DIR%"
+    git clone https://github.com/udit-001/vibe-research.git "%VIBE_DIR%"
     if !errorlevel! neq 0 (
         echo WARNING: Could not clone vibe-research repo.
         echo You can manually clone it later and copy skills to %%USERPROFILE%%\.config\opencode\skills\
@@ -440,7 +535,7 @@ echo   - Theme: One Half Dark with default Windows Terminal font at 13pt
 echo   - Python 3.13 + uv + jq: Installed
 echo   - OpenCode: Installed with DCP plugin and Exa MCP
 echo   - PM2: Installed for process management
-echo   - Jot CLI: Installed (@mariozechner/jot)
+echo   - Jot CLI: Installed (@mariozechner/jot) + auto-configured
 echo   - Jot Data: %JOT_DATA_DIR%
 echo   - Jot PM2 Config: %PM2_CONFIG%
 echo   - Skills: Copied to OpenCode skills directory
@@ -452,11 +547,9 @@ echo.
 echo Next steps:
 echo   1. Restart Windows Terminal (Git Bash)
 echo   2. Run: opencode --help
-echo   3. Start Jot server: pm2 start %PM2_CONFIG%
-echo   4. Save PM2 config: pm2 save
-echo   5. See %VIBE_DIR%\tools\jot\README.md for full Jot setup
-echo   6. Launch Zed: zed
-echo   7. Pull updates: git -C "%VIBE_DIR%" pull
+echo   3. See %VIBE_DIR%\tools\jot\README.md for Jot usage
+echo   4. Launch Zed: zed
+echo   5. Pull updates: git -C "%VIBE_DIR%" pull
 echo.
 echo Repository: https://github.com/udit-001/vibe-research
 echo.
