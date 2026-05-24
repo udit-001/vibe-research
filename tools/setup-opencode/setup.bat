@@ -202,81 +202,26 @@ if !errorlevel! neq 0 (
 )
 echo 7 > "%STATE_FILE%"
 
-:: Phase 8 — Clone vibe-research repo and copy skills + subagent + references to OpenCode
+:: Phase 8 — Clone vibe-research repo and sync skills + subagent + config via Python
 echo [8/10] Setting up research skills, subagent, and references...
 set "VIBE_DIR=%USERPROFILE%\vibe-research"
 if not exist "%VIBE_DIR%" (
     echo Cloning vibe-research repository...
     git clone https://github.com/udit-001/vibe-research.git "%VIBE_DIR%"
-    if !errorlevel! neq 0 (
-        echo WARNING: Could not clone vibe-research repo.
-        echo You can manually clone it later and copy skills to %%USERPROFILE%%\.config\opencode\skills\
-        goto :skills_done
-    )
-) else (
-    echo vibe-research already exists at %VIBE_DIR%
 )
-
-:: Copy skills to OpenCode's skills directory
-set "OPENCODE_SKILLS=%USERPROFILE%\.config\opencode\skills"
-if not exist "%OPENCODE_SKILLS%" mkdir "%OPENCODE_SKILLS%"
-
-if exist "%OPENCODE_SKILLS%\research\SKILL.md" if exist "%OPENCODE_SKILLS%\search\SKILL.md" if exist "%OPENCODE_SKILLS%\jot-collaboration\SKILL.md" (
-    echo [8/10] Skills already copied. Skipping.
+if not exist "%VIBE_DIR%" (
+    echo WARNING: Could not clone vibe-research repo.
+    echo You can manually clone it later and copy skills to %%USERPROFILE%%\.config\opencode\skills\
     goto :skills_done
 )
 
-if exist "%VIBE_DIR%\skills" (
-    echo Copying skills to OpenCode...
-    xcopy /E /I /Y "%VIBE_DIR%\skills\*" "%OPENCODE_SKILLS%\" >nul 2>&1
-    if !errorlevel! equ 0 (
-        echo Skills copied successfully.
-    ) else (
-        echo WARNING: Could not copy skills. You may need to copy them manually.
-    )
-)
-
-:: Copy subagent to OpenCode's agents directory
-set "OPENCODE_AGENTS=%USERPROFILE%\.config\opencode\agents"
-if not exist "%OPENCODE_AGENTS%" mkdir "%OPENCODE_AGENTS%"
-
-if exist "%VIBE_DIR%\.opencode\agents" (
-    echo Copying subagent to OpenCode...
-    xcopy /E /I /Y "%VIBE_DIR%\.opencode\agents\*" "%OPENCODE_AGENTS%\" >nul 2>&1
-    if !errorlevel! equ 0 (
-        echo Subagent copied successfully.
-    ) else (
-        echo WARNING: Could not copy subagent. You may need to copy it manually.
-    )
-)
-
-:: Copy session registry reference to research skill references
-set "RESEARCH_REFS=%OPENCODE_SKILLS%\research\references"
-if not exist "%RESEARCH_REFS%" mkdir "%RESEARCH_REFS%"
-
-if exist "%VIBE_DIR%\skills\research\references\session-registry.md" (
-    echo Copying session registry reference...
-    copy /Y "%VIBE_DIR%\skills\research\references\session-registry.md" "%RESEARCH_REFS%\" >nul 2>&1
-    if !errorlevel! equ 0 (
-        echo Session registry reference copied.
-    ) else (
-        echo WARNING: Could not copy session registry reference.
-    )
-)
-
-:: Copy opencode config (Exa MCP + web-researcher subagent)
-set "OPENCODE_CONFIG=%USERPROFILE%\.config\opencode\opencode.json"
-if not exist "%USERPROFILE%\.config\opencode" mkdir "%USERPROFILE%\.config\opencode"
-if exist "%OPENCODE_CONFIG%" (
-    echo OpenCode config already exists at %OPENCODE_CONFIG% — skipping (delete it to re-apply)
+:: Download and run sync script
+powershell -ExecutionPolicy Bypass -Command "(New-Object Net.WebClient).DownloadFile('https://raw.githubusercontent.com/udit-001/vibe-research/master/tools/setup-opencode/sync-skills.py', '%TEMP%\sync-skills.py')"
+if exist "%TEMP%\sync-skills.py" (
+    python "%TEMP%\sync-skills.py"
+    del "%TEMP%\sync-skills.py" 2>nul
 ) else (
-    echo Copying opencode config (Exa MCP + web-researcher subagent)...
-    copy /Y "%VIBE_DIR%\config\opencode.json" "%OPENCODE_CONFIG%" >nul 2>&1
-    if !errorlevel! equ 0 (
-        echo OpenCode config copied to %OPENCODE_CONFIG%
-    ) else (
-        echo WARNING: Could not copy opencode config.
-    )
+    echo WARNING: Could not download sync-skills.py.
 )
 
 :skills_done

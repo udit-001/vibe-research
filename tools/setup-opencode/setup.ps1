@@ -199,7 +199,7 @@ if (-not (Check-Installed jot)) {
 }
 Save-State 7
 
-# Phase 8 — Clone repo and copy skills
+# Phase 8 — Clone repo and sync skills + subagent + config via Python
 Write-Host "[8/10] Setting up research skills, subagent, and references..."
 $VibeDir = "$env:USERPROFILE\vibe-research"
 if (-not (Test-Path $VibeDir)) {
@@ -213,50 +213,17 @@ if (-not (Test-Path $VibeDir)) {
     Write-Host "vibe-research already exists at $VibeDir"
 }
 
-$OpencodeSkills = "$env:USERPROFILE\.config\opencode\skills"
-$null = New-Item -Path $OpencodeSkills -ItemType Directory -Force
-
-$allSkillsExist = (Test-Path "$OpencodeSkills\research\SKILL.md") -and
-                  (Test-Path "$OpencodeSkills\search\SKILL.md") -and
-                  (Test-Path "$OpencodeSkills\jot-collaboration\SKILL.md")
-if ($allSkillsExist) {
-    Write-Host "[8/10] Skills already copied. Skipping."
-} else {
-    if (Test-Path "$VibeDir\skills") {
-        Write-Host "Copying skills to OpenCode..."
-        Copy-Item -Path "$VibeDir\skills\*" -Destination $OpencodeSkills -Recurse -Force -ErrorAction SilentlyContinue
-        if ($?) { Write-Host "Skills copied successfully." }
-        else { Write-Host "WARNING: Could not copy skills." }
+# Download and run sync script
+$ScriptUrl = "https://raw.githubusercontent.com/udit-001/vibe-research/master/tools/setup-opencode/sync-skills.py"
+$ScriptPath = "$env:TEMP\sync-skills.py"
+try {
+    (New-Object Net.WebClient).DownloadFile($ScriptUrl, $ScriptPath)
+    if (Test-Path $ScriptPath) {
+        python $ScriptPath
+        Remove-Item $ScriptPath -Force
     }
-}
-
-$OpencodeAgents = "$env:USERPROFILE\.config\opencode\agents"
-$null = New-Item -Path $OpencodeAgents -ItemType Directory -Force
-if (Test-Path "$VibeDir\.opencode\agents") {
-    Write-Host "Copying subagent to OpenCode..."
-    Copy-Item -Path "$VibeDir\.opencode\agents\*" -Destination $OpencodeAgents -Recurse -Force -ErrorAction SilentlyContinue
-    if ($?) { Write-Host "Subagent copied successfully." }
-    else { Write-Host "WARNING: Could not copy subagent." }
-}
-
-$ResearchRefs = "$OpencodeSkills\research\references"
-$null = New-Item -Path $ResearchRefs -ItemType Directory -Force
-if (Test-Path "$VibeDir\skills\research\references\session-registry.md") {
-    Write-Host "Copying session registry reference..."
-    Copy-Item -Path "$VibeDir\skills\research\references\session-registry.md" -Destination $ResearchRefs -Force -ErrorAction SilentlyContinue
-    if ($?) { Write-Host "Session registry reference copied." }
-    else { Write-Host "WARNING: Could not copy session registry reference." }
-}
-
-$OpencodeConfig = "$env:USERPROFILE\.config\opencode\opencode.json"
-$null = New-Item -Path "$env:USERPROFILE\.config\opencode" -ItemType Directory -Force
-if (Test-Path $OpencodeConfig) {
-    Write-Host "OpenCode config already exists at $OpencodeConfig — skipping (delete it to re-apply)"
-} else {
-    Write-Host "Copying opencode config (Exa MCP + web-researcher subagent)..."
-    Copy-Item -Path "$VibeDir\config\opencode.json" -Destination $OpencodeConfig -Force -ErrorAction SilentlyContinue
-    if ($?) { Write-Host "OpenCode config copied to $OpencodeConfig" }
-    else { Write-Host "WARNING: Could not copy opencode config." }
+} catch {
+    Write-Host "WARNING: Could not download sync-skills.py. Run setup from the beginning."
 }
 
 Save-State 8
