@@ -104,16 +104,26 @@ if !errorlevel! neq 0 (
     pause
     exit /b 0
 )
-echo Python found. Installing uv via winget...
-winget install -e --id astral-sh.uv
+where uv >nul 2>&1
 if !errorlevel! neq 0 (
-    echo WARNING: Could not install uv. Research session CLI may not work.
+    echo Installing uv via winget...
+    winget install -e --id astral-sh.uv >nul 2>&1
+    if !errorlevel! neq 0 (
+        echo WARNING: Could not install uv. Research session CLI may not work.
+    )
+) else (
+    echo uv already installed.
 )
 
-echo Installing jq (JSON processor) via winget...
-winget install -e --id jqlang.jq
+where jq >nul 2>&1
 if !errorlevel! neq 0 (
-    echo WARNING: Could not install jq.
+    echo Installing jq (JSON processor) via winget...
+    winget install -e --id jqlang.jq >nul 2>&1
+    if !errorlevel! neq 0 (
+        echo WARNING: Could not install jq.
+    )
+) else (
+    echo jq already installed.
 )
 
 :: Phase 4 — OpenCode
@@ -137,6 +147,7 @@ echo [5/10] Installing opencode plugin @tarquinen/opencode-dcp...
 opencode plugin list 2>nul | findstr "opencode-dcp" >nul 2>&1
 if !errorlevel! neq 0 (
     opencode plugin @tarquinen/opencode-dcp@latest --global
+    opencode plugin list 2>nul | findstr "opencode-dcp" >nul 2>&1
     if !errorlevel! neq 0 (
         echo FAILED.
         pause
