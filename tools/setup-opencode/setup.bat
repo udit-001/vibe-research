@@ -153,12 +153,23 @@ echo Downloading config template...
 powershell -ExecutionPolicy Bypass -Command "(New-Object Net.WebClient).DownloadFile('https://raw.githubusercontent.com/udit-001/vibe-research/master/tools/setup-opencode/wt-settings.json', '%TEMP%\wt-settings.json')"
 if not exist "%TEMP%\wt-settings.json" (
     echo WARNING: Could not download Windows Terminal config template.
-    echo You can manually configure Windows Terminal: set Git Bash as default profile.
     goto :wt_done
 )
-powershell -ExecutionPolicy Bypass -Command "$t=Get-Content '%TEMP%\wt-settings.json' -Raw|ConvertFrom-Json -Depth 100; $t.profiles.list|Where-Object{$_.name -eq 'Git Bash'}|ForEach-Object{$_.startingDirectory='%USERPROFILE%\Dev\playground'}; $p='%LOCALAPPDATA%\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json'; if(Test-Path $p){$e=Get-Content $p -Raw|ConvertFrom-Json -Depth 100; $a=$e.profiles.list|Where-Object{$_.name -ne 'Git Bash'}; if($a){$t.profiles.list+=$a}; if($e.actions){$t.actions=$e.actions}}; $t|ConvertTo-Json -Depth 100|Set-Content $p; Write-Host 'Done'"
-del "%TEMP%\wt-settings.json"
-echo Windows Terminal configured: Git Bash as default profile
+echo Downloading merge script...
+powershell -ExecutionPolicy Bypass -Command "(New-Object Net.WebClient).DownloadFile('https://raw.githubusercontent.com/udit-001/vibe-research/master/tools/setup-opencode/merge-wt-config.py', '%TEMP%\merge-wt-config.py')"
+if not exist "%TEMP%\merge-wt-config.py" (
+    echo WARNING: Could not download merge script.
+    goto :wt_cleanup
+)
+python "%TEMP%\merge-wt-config.py" "%TEMP%\wt-settings.json" "%LOCALAPPDATA%\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json" "%USERPROFILE%\Dev\playground"
+if !errorlevel! equ 0 (
+    echo Windows Terminal configured: Git Bash as default profile
+) else (
+    echo WARNING: Failed to configure Windows Terminal.
+)
+:wt_cleanup
+del "%TEMP%\wt-settings.json" 2>nul
+del "%TEMP%\merge-wt-config.py" 2>nul
 :wt_done
 
 :: Phase 6 — PM2 (for Jot process management)

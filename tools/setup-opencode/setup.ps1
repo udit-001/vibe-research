@@ -151,32 +151,24 @@ Write-Host ""
 Write-Host "Configuring Windows Terminal..."
 $WtSettings = "$env:LOCALAPPDATA\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
 $TemplateUrl = "https://raw.githubusercontent.com/udit-001/vibe-research/master/tools/setup-opencode/wt-settings.json"
+$MergeScriptUrl = "https://raw.githubusercontent.com/udit-001/vibe-research/master/tools/setup-opencode/merge-wt-config.py"
+$TemplatePath = "$env:TEMP\wt-settings.json"
+$MergeScriptPath = "$env:TEMP\merge-wt-config.py"
 
 try {
-    $json = (New-Object Net.WebClient).DownloadString($TemplateUrl)
-    $template = $json | ConvertFrom-Json -Depth 100
-
-    $profile = $template.profiles.list | Where-Object { $_.name -eq "Git Bash" }
-    if ($profile) {
-        $profile.startingDirectory = "$env:USERPROFILE\Dev\playground"
+    $web = New-Object Net.WebClient
+    $web.DownloadFile($TemplateUrl, $TemplatePath)
+    $web.DownloadFile($MergeScriptUrl, $MergeScriptPath)
+    python $MergeScriptPath $TemplatePath $WtSettings "$env:USERPROFILE\Dev\playground"
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "Windows Terminal configured: Git Bash as default profile"
     }
-
-    if (Test-Path $WtSettings) {
-        $existing = Get-Content $WtSettings -Raw | ConvertFrom-Json -Depth 100
-        $autoProfiles = $existing.profiles.list | Where-Object { $_.name -ne "Git Bash" }
-        if ($autoProfiles) {
-            $template.profiles.list += $autoProfiles
-        }
-        if ($existing.actions) {
-            $template.actions = $existing.actions
-        }
-    }
-
-    $template | ConvertTo-Json -Depth 100 | Set-Content $WtSettings
-    Write-Host "Windows Terminal configured: Git Bash as default profile"
 } catch {
-    Write-Host "WARNING: Could not download Windows Terminal config template."
+    Write-Host "WARNING: Could not configure Windows Terminal."
     Write-Host "You can manually configure Windows Terminal: set Git Bash as default profile."
+} finally {
+    Remove-Item $TemplatePath -ErrorAction SilentlyContinue
+    Remove-Item $MergeScriptPath -ErrorAction SilentlyContinue
 }
 
 # Phase 6 — PM2
