@@ -207,32 +207,19 @@ echo [8/10] Setting up Jot data directory and PM2 config...
 set "JOT_DATA_DIR=%USERPROFILE%\jot-data"
 if not exist "%JOT_DATA_DIR%\logs" mkdir "%JOT_DATA_DIR%\logs"
 
-:: Create PM2 ecosystem file for Jot
+:: Generate PM2 ecosystem file for Jot via Python (resolves jot entry point dynamically)
 set "PM2_CONFIG=%USERPROFILE%\jot-pm2.json"
-if exist "%PM2_CONFIG%" (
-    echo Jot PM2 config already exists at %PM2_CONFIG%
+echo Downloading PM2 config generator...
+powershell -ExecutionPolicy Bypass -Command "(New-Object Net.WebClient).DownloadFile('https://raw.githubusercontent.com/udit-001/vibe-research/master/tools/setup-opencode/gen-jot-pm2-config.py', '%TEMP%\gen-jot-pm2-config.py')"
+if not exist "%TEMP%\gen-jot-pm2-config.py" (
+    echo WARNING: Could not download PM2 config generator.
     goto :pm2_config_done
 )
-(
-echo {
-echo   "apps": [{
-echo     "name": "jot",
-echo     "script": "jot",
-echo     "args": ["serve", "--port=3210", "--data=%JOT_DATA_DIR%"],
-echo     "instances": 1,
-echo     "exec_mode": "fork",
-echo     "env": {
-echo       "NODE_ENV": "production"
-echo     },
-echo     "log_file": "%JOT_DATA_DIR%\\logs\\combined.log",
-echo     "out_file": "%JOT_DATA_DIR%\\logs\\out.log",
-echo     "error_file": "%JOT_DATA_DIR%\\logs\\error.log",
-echo     "autorestart": true,
-echo     "max_restarts": 10,
-echo     "min_uptime": "10s"
-echo   }]
-echo }
-) > "%PM2_CONFIG%"
+python "%TEMP%\gen-jot-pm2-config.py" "%PM2_CONFIG%" "%JOT_DATA_DIR%" 3210
+if !errorlevel! neq 0 (
+    echo WARNING: Could not generate PM2 config.
+)
+del "%TEMP%\gen-jot-pm2-config.py" 2>nul
 :pm2_config_done
 echo Jot PM2 config ready at %PM2_CONFIG%
 echo 8 > "%STATE_FILE%"
@@ -252,7 +239,8 @@ if !errorlevel! neq 0 (
 )
 
 echo Starting Jot server...
-pm2 start "%PM2_CONFIG%" 2>nul || pm2 restart jot
+pm2 delete jot 2>nul
+pm2 start "%PM2_CONFIG%"
 if !errorlevel! neq 0 (
     echo FAILED to start Jot server. After setup, run: pm2 start %PM2_CONFIG%
     goto :jot_api_done

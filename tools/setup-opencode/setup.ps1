@@ -205,27 +205,23 @@ $JotDataDir = "$env:USERPROFILE\jot-data"
 $null = New-Item -Path "$JotDataDir\logs" -ItemType Directory -Force
 
 $Pm2Config = "$env:USERPROFILE\jot-pm2.json"
-if (-not (Test-Path $Pm2Config)) {
-    $pm2Json = @{
-        apps = @(@{
-            name         = "jot"
-            script       = "jot"
-            args         = @("serve", "--port=3210", "--data=$JotDataDir")
-            instances    = 1
-            exec_mode    = "fork"
-            env          = @{ NODE_ENV = "production" }
-            log_file     = "$JotDataDir\logs\combined.log"
-            out_file     = "$JotDataDir\logs\out.log"
-            error_file   = "$JotDataDir\logs\error.log"
-            autorestart  = $true
-            max_restarts = 10
-            min_uptime   = "10s"
-        })
+$GenScriptUrl = "https://raw.githubusercontent.com/udit-001/vibe-research/master/tools/setup-opencode/gen-jot-pm2-config.py"
+$GenScriptPath = "$env:TEMP\gen-jot-pm2-config.py"
+
+try {
+    (New-Object Net.WebClient).DownloadFile($GenScriptUrl, $GenScriptPath)
+} catch {
+    Write-Host "WARNING: Could not download PM2 config generator."
+}
+
+if (Test-Path $GenScriptPath) {
+    python $GenScriptPath $Pm2Config $JotDataDir 3210
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "Created PM2 config at $Pm2Config"
+    } else {
+        Write-Host "WARNING: Could not generate PM2 config."
     }
-    $pm2Json | ConvertTo-Json -Depth 10 | Out-File -FilePath $Pm2Config -Encoding ascii
-    Write-Host "Created PM2 config at $Pm2Config"
-} else {
-    Write-Host "PM2 config already exists at $Pm2Config"
+    Remove-Item $GenScriptPath -Force -ErrorAction SilentlyContinue
 }
 
 if (-not (Check-Installed pm2)) {
@@ -240,8 +236,8 @@ if (-not (Check-Installed jot)) {
 }
 
 Write-Host "Starting Jot server..."
-pm2 start $Pm2Config 2>$null
-if ($LASTEXITCODE -ne 0) { pm2 restart jot }
+pm2 delete jot 2>$null
+pm2 start $Pm2Config
 if ($LASTEXITCODE -ne 0) {
     Write-Host "FAILED to start Jot server. After setup, run: pm2 start $Pm2Config"
 } else {
