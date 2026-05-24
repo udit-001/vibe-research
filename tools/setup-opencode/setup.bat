@@ -39,10 +39,6 @@ if !errorlevel! neq 0 (
     echo Windows Terminal already installed.
 )
 
-:: Pin Windows Terminal to taskbar
-echo Pinning Windows Terminal to taskbar...
-powershell -command "try{$p=(New-Object -ComObject Shell.Application).NameSpace('shell:AppsFolder').Items()|?{$_.Name -eq 'Windows Terminal'};$v=$p.Verbs()|?{$_.Name -like '*Pin*'};if($v){$v.DoIt()}}catch{}" >nul 2>&1
-if !errorlevel! equ 0 ( echo   Done. ) else ( echo   Skipped. )
 echo.
 
 :: Phase 1 — Git
