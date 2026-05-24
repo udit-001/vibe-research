@@ -19,6 +19,8 @@ if %STATE%==10 (
 
 echo === OpenCode + Jot + Skills + Zed Windows Setup ===
 echo.
+echo Repository: https://github.com/udit-001/vibe-research
+echo.
 
 :: Phase 0 — Windows Terminal (REQUIRED)
 where wt >nul 2>&1
@@ -446,5 +448,8 @@ echo   3. Start Jot server: pm2 start %PM2_CONFIG%
 echo   4. Save PM2 config: pm2 save
 echo   5. See %VIBE_DIR%\tools\jot\README.md for full Jot setup
 echo   6. Launch Zed: zed
+echo   7. Pull updates: git -C "%VIBE_DIR%" pull
+echo.
+echo Repository: https://github.com/udit-001/vibe-research
 echo.
 pause
