@@ -9,7 +9,7 @@ set STATE=0
 if exist "%STATE_FILE%" set /p STATE=<"%STATE_FILE%"
 
 if %STATE%==10 (
-    echo === OpenCode + Jot + Skills + Zed are already installed ===
+    echo === OpenCode + Python + Jot + Skills + Zed are already installed ===
     echo Run: opencode --help to get started.
     echo Run: jot --help to see jot commands.
     echo Run: zed --help to see Zed commands.
@@ -17,7 +17,7 @@ if %STATE%==10 (
     exit /b 0
 )
 
-echo === OpenCode + Jot + Skills + Zed Windows Setup ===
+echo === OpenCode + Python + Jot + Skills + Zed Windows Setup ===
 echo.
 echo Repository: https://github.com/udit-001/vibe-research
 echo.
@@ -87,13 +87,10 @@ if !errorlevel! neq 0 (
     exit /b 0
 )
 
-:: Phase 3 — Python (optional)
+:: Phase 3 — Python + uv (REQUIRED for research skills)
 where python >nul 2>&1
 if !errorlevel! neq 0 (
-    echo [3/10] Python is optional. Install it? (y/N, default N)
-    set /p INSTALL_PYTHON=
-    if /i "!INSTALL_PYTHON!" neq "Y" goto :skip_python
-    echo Installing Python via winget...
+    echo [3/10] Installing Python 3.13...
     winget install -e --id Python.Python.3.13
     if !errorlevel! neq 0 (
         echo FAILED.
@@ -106,7 +103,11 @@ if !errorlevel! neq 0 (
     pause
     exit /b 0
 )
-:skip_python
+echo Python found. Installing/upgrading uv...
+pip install uv
+if !errorlevel! neq 0 (
+    echo WARNING: Could not install uv. Research session CLI may not work.
+)
 
 :: Phase 4 — OpenCode
 where opencode >nul 2>&1
@@ -430,6 +431,7 @@ echo   - Windows Terminal: Installed and configured
 echo   - Git: Installed with 'oc' alias in .bashrc
 echo   - Git Bash: Set as default profile, starts in Dev\playground
 echo   - Theme: One Half Dark with default Windows Terminal font at 13pt
+echo   - Python 3.13 + uv: Installed
 echo   - OpenCode: Installed with DCP plugin and Exa MCP
 echo   - PM2: Installed for process management
 echo   - Jot CLI: Installed (@mariozechner/jot)
