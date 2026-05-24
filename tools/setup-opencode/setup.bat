@@ -109,6 +109,12 @@ if !errorlevel! neq 0 (
     echo WARNING: Could not install uv. Research session CLI may not work.
 )
 
+echo Installing jq (JSON processor) via winget...
+winget install -e --id jqlang.jq
+if !errorlevel! neq 0 (
+    echo WARNING: Could not install jq.
+)
+
 :: Phase 4 — OpenCode
 where opencode >nul 2>&1
 if !errorlevel! neq 0 (
@@ -431,7 +437,7 @@ echo   - Windows Terminal: Installed and configured
 echo   - Git: Installed with 'oc' alias in .bashrc
 echo   - Git Bash: Set as default profile, starts in Dev\playground
 echo   - Theme: One Half Dark with default Windows Terminal font at 13pt
-echo   - Python 3.13 + uv: Installed
+echo   - Python 3.13 + uv + jq: Installed
 echo   - OpenCode: Installed with DCP plugin and Exa MCP
 echo   - PM2: Installed for process management
 echo   - Jot CLI: Installed (@mariozechner/jot)
