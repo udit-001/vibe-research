@@ -1,0 +1,450 @@
+@echo off
+setlocal enabledelayedexpansion
+
+set "STATE_DIR=%USERPROFILE%\.opencode-setup"
+set "STATE_FILE=%STATE_DIR%\state.txt"
+if not exist "%STATE_DIR%" mkdir "%STATE_DIR%"
+
+set STATE=0
+if exist "%STATE_FILE%" set /p STATE=<"%STATE_FILE%"
+
+if %STATE%==10 (
+    echo === OpenCode + Jot + Skills + Zed are already installed ===
+    echo Run: opencode --help to get started.
+    echo Run: jot --help to see jot commands.
+    echo Run: zed --help to see Zed commands.
+    pause
+    exit /b 0
+)
+
+echo === OpenCode + Jot + Skills + Zed Windows Setup ===
+echo.
+
+:: Phase 0 — Windows Terminal (REQUIRED)
+where wt >nul 2>&1
+if !errorlevel! neq 0 (
+    echo [0/10] Installing Windows Terminal via winget...
+    winget install --id Microsoft.WindowsTerminal -e
+    if !errorlevel! neq 0 (
+        echo FAILED. Windows Terminal is required for this setup.
+        pause
+        exit /b 1
+    )
+    echo Windows Terminal installed. Close this terminal and open Windows Terminal, then run this script again.
+    pause
+    exit /b 0
+) else (
+    echo Windows Terminal already installed.
+)
+echo.
+
+:: Phase 1 — Git
+where git >nul 2>&1
+if !errorlevel! neq 0 (
+    echo [1/10] Installing Git via winget...
+    winget install -e --id Git.Git
+    if !errorlevel! neq 0 (
+        echo FAILED.
+        pause
+        exit /b 1
+    )
+    echo 1 > "%STATE_FILE%"
+    echo.
+    echo Done. Close this terminal and open a new one, then run this script again.
+    pause
+    exit /b 0
+)
+
+:: Setup .bashrc with opencode alias after Git is installed
+set "BASHRC=%USERPROFILE%\.bashrc"
+if not exist "%BASHRC%" (
+    echo # Git Bash configuration > "%BASHRC%"
+)
+findstr /C:"alias oc=" "%BASHRC%" >nul 2>&1
+if !errorlevel! neq 0 (
+    echo. >> "%BASHRC%"
+    echo # OpenCode alias >> "%BASHRC%"
+    echo alias oc='opencode' >> "%BASHRC%"
+    echo Added 'oc' alias to %BASHRC%
+)
+
+:: Phase 2 — Node.js
+where node >nul 2>&1
+if !errorlevel! neq 0 (
+    echo [2/10] Installing Node.js via winget...
+    winget install -e --id OpenJS.NodeJS.LTS
+    if !errorlevel! neq 0 (
+        echo FAILED.
+        pause
+        exit /b 1
+    )
+    echo 2 > "%STATE_FILE%"
+    echo.
+    echo Done. Close this terminal and open a new one, then run this script again.
+    pause
+    exit /b 0
+)
+
+:: Phase 3 — Python (optional)
+where python >nul 2>&1
+if !errorlevel! neq 0 (
+    echo [3/10] Python is optional. Install it? (y/N, default N)
+    set /p INSTALL_PYTHON=
+    if /i "!INSTALL_PYTHON!" neq "Y" goto :skip_python
+    echo Installing Python via winget...
+    winget install -e --id Python.Python.3.13
+    if !errorlevel! neq 0 (
+        echo FAILED.
+        pause
+        exit /b 1
+    )
+    echo 3 > "%STATE_FILE%"
+    echo.
+    echo Done. Close this terminal and open a new one, then run this script again.
+    pause
+    exit /b 0
+)
+:skip_python
+
+:: Phase 4 — OpenCode
+where opencode >nul 2>&1
+if !errorlevel! neq 0 (
+    echo [4/10] Installing OpenCode...
+    npm install -g opencode-ai
+    if !errorlevel! neq 0 (
+        echo FAILED.
+        pause
+        exit /b 1
+    )
+) else (
+    echo [4/10] OpenCode already installed. Skipping.
+)
+echo 4 > "%STATE_FILE%"
+
+:: Phase 5 — OpenCode DCP plugin
+echo [5/10] Installing opencode plugin @tarquinen/opencode-dcp...
+opencode plugin list 2>nul | findstr "opencode-dcp" >nul 2>&1
+if !errorlevel! neq 0 (
+    opencode plugin @tarquinen/opencode-dcp@latest --global
+    if !errorlevel! neq 0 (
+        echo FAILED.
+        pause
+        exit /b 1
+    )
+) else (
+    echo [5/10] DCP plugin already installed. Skipping.
+)
+echo 5 > "%STATE_FILE%"
+
+echo.
+echo === OpenCode installed successfully! ===
+echo Run: opencode --help to get started.
+echo.
+
+:: Create Dev/playground directory structure
+if not exist "%USERPROFILE%\Dev" mkdir "%USERPROFILE%\Dev"
+if not exist "%USERPROFILE%\Dev\playground" mkdir "%USERPROFILE%\Dev\playground"
+echo Created: %USERPROFILE%\Dev\playground
+echo.
+
+:: Configure Windows Terminal with Git Bash profile, theme, and settings
+set "WT_SETTINGS=%LOCALAPPDATA%\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
+if not exist "%WT_SETTINGS%" (
+    echo Windows Terminal settings.json not found at expected location.
+    echo Skipping Windows Terminal configuration.
+    goto :wt_done
+)
+
+echo Configuring Windows Terminal...
+
+:: Create a PowerShell script to modify settings.json
+set "PS_SCRIPT=%TEMP%\wt-config.ps1"
+(
+echo $settingsPath = "$env:LOCALAPPDATA\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
+echo $json = Get-Content $settingsPath -Raw ^| ConvertFrom-Json -Depth 100
+echo.
+echo # Generate a GUID for Git Bash profile
+echo $gitBashGuid = "{00000000-0000-0000-0000-000000000001}"
+echo.
+echo # Check if Git Bash profile already exists
+echo $existingProfile = $json.profiles.list ^| Where-Object { $_.name -eq "Git Bash" }
+echo if (-not $existingProfile) {
+echo     $gitBashProfile = @{
+echo         guid = $gitBashGuid
+echo         name = "Git Bash"
+echo         commandline = "`"C:\Program Files\Git\bin\bash.exe`" -li"
+echo         icon = "`"C:\Program Files\Git\mingw64\share\git\git-for-windows.ico`""
+echo         startingDirectory = "`"%USERPROFILE%\Dev\playground`""
+echo         hidden = $false
+echo     }
+echo     $json.profiles.list += $gitBashProfile
+echo     Write-Host "Added Git Bash profile"
+echo } else {
+echo     $existingProfile.startingDirectory = "`"%USERPROFILE%\Dev\playground`""
+echo     Write-Host "Updated Git Bash starting directory"
+echo }
+echo.
+echo # Set Git Bash as default profile
+echo $json.defaultProfile = $gitBashGuid
+echo Write-Host "Set Git Bash as default profile"
+echo.
+echo # Add One Half Dark color scheme if not exists
+echo $oneHalfDark = @{
+echo     name = "One Half Dark"
+echo     background = "#282C34"
+echo     foreground = "#DCDFE4"
+echo     black = "#282C34"
+echo     red = "#E06C75"
+echo     green = "#98C379"
+echo     yellow = "#E5C07B"
+echo     blue = "#61AFEF"
+echo     purple = "#C678DD"
+echo     cyan = "#56B6C2"
+echo     white = "#DCDFE4"
+echo     brightBlack = "#5A6374"
+echo     brightRed = "#E06C75"
+echo     brightGreen = "#98C379"
+echo     brightYellow = "#E5C07B"
+echo     brightBlue = "#61AFEF"
+echo     brightPurple = "#C678DD"
+echo     brightCyan = "#56B6C2"
+echo     brightWhite = "#DCDFE4"
+echo     cursorColor = "#A3B3CC"
+echo     selectionBackground = "#3E4451"
+echo }
+echo.
+echo if (-not $json.schemes) {
+echo     $json ^| Add-Member -NotePropertyName schemes -NotePropertyValue @($oneHalfDark)
+echo     Write-Host "Added One Half Dark color scheme"
+echo } else {
+echo     $existingScheme = $json.schemes ^| Where-Object { $_.name -eq "One Half Dark" }
+echo     if (-not $existingScheme) {
+echo         $json.schemes += $oneHalfDark
+echo         Write-Host "Added One Half Dark color scheme"
+echo     }
+echo }
+echo.
+echo # Apply theme and font to defaults
+echo if (-not $json.profiles.defaults) {
+echo     $json.profiles ^| Add-Member -NotePropertyName defaults -NotePropertyValue @{
+echo         colorScheme = "One Half Dark"
+echo         font = @{
+echo             size = 13
+echo         }
+echo         useAcrylic = $true
+echo         acrylicOpacity = 0.85
+echo         padding = "8"
+echo     }
+echo } else {
+echo     $json.profiles.defaults.colorScheme = "One Half Dark"
+echo     $json.profiles.defaults.font = @{
+echo         size = 13
+echo     }
+echo     $json.profiles.defaults.useAcrylic = $true
+echo     $json.profiles.defaults.acrylicOpacity = 0.85
+echo     $json.profiles.defaults.padding = "8"
+echo }
+echo Write-Host "Applied theme and font settings"
+echo.
+echo # Save settings
+echo $json ^| ConvertTo-Json -Depth 100 ^| Set-Content $settingsPath
+echo Write-Host "Windows Terminal configuration saved"
+) > "%PS_SCRIPT%"
+
+powershell -ExecutionPolicy Bypass -File "%PS_SCRIPT%"
+del "%PS_SCRIPT%"
+
+:wt_done
+
+:: Phase 6 — PM2 (for Jot process management)
+where pm2 >nul 2>&1
+if !errorlevel! neq 0 (
+    echo [6/10] Installing PM2...
+    call npm install -g pm2
+    if !errorlevel! neq 0 (
+        echo FAILED.
+        pause
+        exit /b 1
+    )
+) else (
+    echo [6/10] PM2 already installed. Skipping.
+)
+echo 6 > "%STATE_FILE%"
+
+:: Phase 7 — Jot CLI
+where jot >nul 2>&1
+if !errorlevel! neq 0 (
+    echo [7/10] Installing Jot CLI...
+    call npm install -g @mariozechner/jot
+    if !errorlevel! neq 0 (
+        echo FAILED.
+        pause
+        exit /b 1
+    )
+) else (
+    echo [7/10] Jot CLI already installed. Skipping.
+)
+echo 7 > "%STATE_FILE%"
+
+:: Phase 8 — Jot Data Directory and PM2 Config
+echo [8/10] Setting up Jot data directory and PM2 config...
+set "JOT_DATA_DIR=%USERPROFILE%\jot-data"
+if not exist "%JOT_DATA_DIR%\logs" mkdir "%JOT_DATA_DIR%\logs"
+
+:: Create PM2 ecosystem file for Jot
+set "PM2_CONFIG=%USERPROFILE%\jot-pm2.json"
+if exist "%PM2_CONFIG%" (
+    echo Jot PM2 config already exists at %PM2_CONFIG%
+    goto :pm2_config_done
+)
+(
+echo {
+echo   "apps": [{
+echo     "name": "jot",
+echo     "script": "jot",
+echo     "args": ["serve", "--port=3210", "--data=%JOT_DATA_DIR%"],
+echo     "instances": 1,
+echo     "exec_mode": "fork",
+echo     "env": {
+echo       "NODE_ENV": "production"
+echo     },
+echo     "log_file": "%JOT_DATA_DIR%\\logs\\combined.log",
+echo     "out_file": "%JOT_DATA_DIR%\\logs\\out.log",
+echo     "error_file": "%JOT_DATA_DIR%\\logs\\error.log",
+echo     "autorestart": true,
+echo     "max_restarts": 10,
+echo     "min_uptime": "10s"
+echo   }]
+echo }
+) > "%PM2_CONFIG%"
+:pm2_config_done
+echo Jot PM2 config ready at %PM2_CONFIG%
+echo 8 > "%STATE_FILE%"
+
+:: Phase 9 — Clone vibe-research repo and copy skills + subagent + references to OpenCode
+echo [9/10] Setting up research skills, subagent, and references...
+set "VIBE_DIR=%USERPROFILE%\vibe-research"
+if not exist "%VIBE_DIR%" (
+    echo Cloning vibe-research repository...
+    git clone https://github.com/YOUR_USERNAME/vibe-research.git "%VIBE_DIR%"
+    if !errorlevel! neq 0 (
+        echo WARNING: Could not clone vibe-research repo.
+        echo You can manually clone it later and copy skills to %%USERPROFILE%%\.config\opencode\skills\
+        goto :skills_done
+    )
+) else (
+    echo vibe-research already exists at %VIBE_DIR%
+)
+
+:: Copy skills to OpenCode's skills directory
+set "OPENCODE_SKILLS=%USERPROFILE%\.config\opencode\skills"
+if not exist "%OPENCODE_SKILLS%" mkdir "%OPENCODE_SKILLS%"
+
+if exist "%OPENCODE_SKILLS%\research\SKILL.md" (
+    echo [9/10] Skills already copied. Skipping.
+    goto :skills_done
+)
+
+if exist "%VIBE_DIR%\skills" (
+    echo Copying skills to OpenCode...
+    xcopy /E /I /Y "%VIBE_DIR%\skills\*" "%OPENCODE_SKILLS%\" >nul 2>&1
+    if !errorlevel! equ 0 (
+        echo Skills copied successfully.
+    ) else (
+        echo WARNING: Could not copy skills. You may need to copy them manually.
+    )
+)
+
+:: Copy subagent to OpenCode's agents directory
+set "OPENCODE_AGENTS=%USERPROFILE%\.config\opencode\agents"
+if not exist "%OPENCODE_AGENTS%" mkdir "%OPENCODE_AGENTS%"
+
+if exist "%VIBE_DIR%\.opencode\agents" (
+    echo Copying subagent to OpenCode...
+    xcopy /E /I /Y "%VIBE_DIR%\.opencode\agents\*" "%OPENCODE_AGENTS%\" >nul 2>&1
+    if !errorlevel! equ 0 (
+        echo Subagent copied successfully.
+    ) else (
+        echo WARNING: Could not copy subagent. You may need to copy it manually.
+    )
+)
+
+:: Copy session registry reference to research skill references
+set "RESEARCH_REFS=%OPENCODE_SKILLS%\research\references"
+if not exist "%RESEARCH_REFS%" mkdir "%RESEARCH_REFS%"
+
+if exist "%VIBE_DIR%\skills\research\references\session-registry.md" (
+    echo Copying session registry reference...
+    copy /Y "%VIBE_DIR%\skills\research\references\session-registry.md" "%RESEARCH_REFS%\" >nul 2>&1
+    if !errorlevel! equ 0 (
+        echo Session registry reference copied.
+    ) else (
+        echo WARNING: Could not copy session registry reference.
+    )
+)
+
+:: Copy opencode config (Exa MCP + web-researcher subagent)
+set "OPENCODE_CONFIG=%USERPROFILE%\.config\opencode\opencode.json"
+if not exist "%USERPROFILE%\.config\opencode" mkdir "%USERPROFILE%\.config\opencode"
+if exist "%OPENCODE_CONFIG%" (
+    echo OpenCode config already exists at %OPENCODE_CONFIG% — skipping (delete it to re-apply)
+) else (
+    echo Copying opencode config (Exa MCP + web-researcher subagent)...
+    copy /Y "%VIBE_DIR%\config\opencode.json" "%OPENCODE_CONFIG%" >nul 2>&1
+    if !errorlevel! equ 0 (
+        echo OpenCode config copied to %OPENCODE_CONFIG%
+    ) else (
+        echo WARNING: Could not copy opencode config.
+    )
+)
+
+:skills_done
+echo 9 > "%STATE_FILE%"
+
+:: Phase 10 — Zed Editor
+echo [10/10] Installing Zed Editor...
+where zed >nul 2>&1
+if !errorlevel! neq 0 (
+    echo Installing Zed via winget...
+    winget install -e --id ZedIndustries.Zed
+    if !errorlevel! neq 0 (
+        echo WARNING: Could not install Zed via winget.
+        echo You can manually install it from https://zed.dev
+        goto :zed_done
+    )
+    echo Zed installed successfully.
+) else (
+    echo Zed already installed.
+)
+
+:zed_done
+echo 10 > "%STATE_FILE%"
+
+echo.
+echo === Setup complete! ===
+echo.
+echo Summary:
+echo   - Windows Terminal: Installed and configured
+echo   - Git: Installed with 'oc' alias in .bashrc
+echo   - Git Bash: Set as default profile, starts in Dev\playground
+echo   - Theme: One Half Dark with default Windows Terminal font at 13pt
+echo   - OpenCode: Installed with DCP plugin and Exa MCP
+echo   - PM2: Installed for process management
+echo   - Jot CLI: Installed (@mariozechner/jot)
+echo   - Jot Data: %JOT_DATA_DIR%
+echo   - Jot PM2 Config: %PM2_CONFIG%
+echo   - Skills: Copied to OpenCode skills directory
+echo   - Subagent: Copied to OpenCode agents directory
+echo   - Session Registry: Copied to research references
+echo   - Zed: Installed
+echo   - Dev\playground: Created
+echo.
+echo Next steps:
+echo   1. Restart Windows Terminal (Git Bash)
+echo   2. Run: opencode --help
+echo   3. Start Jot server: pm2 start %PM2_CONFIG%
+echo   4. Save PM2 config: pm2 save
+echo   5. See %VIBE_DIR%\tools\jot\README.md for full Jot setup
+echo   6. Launch Zed: zed
+echo.
+pause
