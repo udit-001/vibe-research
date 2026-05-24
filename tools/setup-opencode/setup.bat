@@ -181,6 +181,7 @@ echo     $json.profiles.list += $gitBashProfile
 echo     Write-Host "Added Git Bash profile"
 echo } else {
 echo     $existingProfile.startingDirectory = "`"%USERPROFILE%\Dev\playground`""
+echo     $gitBashGuid = $existingProfile.guid
 echo     Write-Host "Updated Git Bash starting directory"
 echo }
 echo.

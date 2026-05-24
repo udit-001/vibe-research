@@ -170,6 +170,7 @@ if (-not (Test-Path $WtSettings)) {
         Write-Host "Added Git Bash profile"
     } else {
         $existingProfile.startingDirectory = "$env:USERPROFILE\Dev\playground"
+        $gitBashGuid = $existingProfile.guid
         Write-Host "Updated Git Bash starting directory"
     }
 
