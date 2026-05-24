@@ -1,19 +1,41 @@
 import json, sys, os, subprocess
 
 def find_jot_entry():
+    candidates = []
+
     try:
         npm_root = subprocess.check_output(["npm", "root", "-g"], text=True).strip()
     except Exception:
         npm_root = os.path.join(os.environ.get("APPDATA", ""), "npm", "node_modules")
 
-    entry = os.path.join(npm_root, "@mariozechner", "jot", "bin", "run.js")
-    if os.path.exists(entry):
-        return entry
+    pkg_dir = os.path.join(npm_root, "@mariozechner", "jot")
 
-    alt = os.path.join(os.environ.get("LOCALAPPDATA", ""), "npm", "node_modules",
-                       "@mariozechner", "jot", "bin", "run.js")
-    if os.path.exists(alt):
-        return alt
+    pkg_json_path = os.path.join(pkg_dir, "package.json")
+    if os.path.exists(pkg_json_path):
+        with open(pkg_json_path) as f:
+            pkg = json.load(f)
+        bin_field = pkg.get("bin")
+        if isinstance(bin_field, dict):
+            for entry in bin_field.values():
+                if entry:
+                    candidates.append(os.path.join(pkg_dir, entry))
+        elif isinstance(bin_field, str):
+            candidates.append(os.path.join(pkg_dir, bin_field))
+        main = pkg.get("main", "")
+        if main:
+            candidates.append(os.path.join(pkg_dir, main))
+
+    candidates.append(os.path.join(pkg_dir, "cli", "jot.mjs"))
+    candidates.append(os.path.join(pkg_dir, "dist", "server.js"))
+
+    alt_dir = os.path.join(os.environ.get("LOCALAPPDATA", ""), "npm", "node_modules",
+                           "@mariozechner", "jot")
+    candidates.append(os.path.join(alt_dir, "cli", "jot.mjs"))
+    candidates.append(os.path.join(alt_dir, "dist", "server.js"))
+
+    for c in candidates:
+        if c and os.path.exists(c):
+            return c
     return None
 
 def main():
