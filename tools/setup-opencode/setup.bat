@@ -120,7 +120,8 @@ if !errorlevel! neq 0 (
 where opencode >nul 2>&1
 if !errorlevel! neq 0 (
     echo [4/10] Installing OpenCode...
-    npm install -g opencode-ai
+    npm install -g opencode-ai --no-fund --no-audit 2>&1
+    where opencode >nul 2>&1
     if !errorlevel! neq 0 (
         echo FAILED.
         pause
