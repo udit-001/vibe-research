@@ -3,7 +3,7 @@
     "web-researcher": {
       "description": "Elite internet researcher for deep research tasks. Loads domain modules, executes structured searches, returns cited findings.",
       "mode": "subagent",
-      "prompt": "{file:./.opencode/agents/web-researcher.md}",
+      "prompt": "{file:./agents/web-researcher.md}",
       "permission": {
         "websearch": "allow",
         "webfetch": "allow",
